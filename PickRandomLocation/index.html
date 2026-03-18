@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PickRandomLocation – Chọn Địa Điểm Ngẫu Nhiên Việt Nam</title>
+  <meta name="description" content="Công cụ chọn ngẫu nhiên địa điểm trong khu vực tại Việt Nam, lấy địa chỉ đầy đủ (Tỉnh/TP, Quận/Huyện, Phường/Xã) và xuất file Excel." />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <!-- App CSS -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div id="app">
+
+  <!-- ===== TOPBAR ===== -->
+  <header id="topbar">
+    <div class="logo">
+      <div class="icon">📍</div>
+      PickRandomLocation
+      <span class="subtitle">Vietnam</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="badge">Cấu trúc hành chính mới (Tỉnh/TP → Phường/Xã)</div>
+  </header>
+
+  <!-- ===== SIDEBAR ===== -->
+  <aside id="sidebar">
+
+    <!-- Multi-area list -->
+    <div>
+      <div class="section-label" style="display:flex;align-items:center;justify-content:space-between;">
+        <span>🗺️ Danh sách khu vực</span>
+        <span id="totalTargetBadge" style="font-size:10px;color:var(--text-muted);">tổng: 0 điểm</span>
+      </div>
+      <div id="areaList">
+        <!-- rows injected by JS -->
+      </div>
+      <button id="btnAddArea" class="btn btn-outline btn-full" style="margin-top:8px;">
+        + Thêm khu vực
+      </button>
+    </div>
+
+    <!-- Stats -->
+    <div class="status-cards">
+      <div class="stat-card">
+        <div class="stat-n" id="statPicked">0</div>
+        <div class="stat-l">Đã pick</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-n" id="statArea">—</div>
+        <div class="stat-l">Mục tiêu</div>
+      </div>
+    </div>
+
+    <!-- Progress -->
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progressFill"></div>
+      </div>
+      <div class="progress-text" id="progressText">Đang xử lý...</div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div style="display:flex; flex-direction:column; gap:8px;">
+      <button id="btnPick" class="btn btn-primary btn-full">
+        <span>🎲</span> Pick Ngẫu Nhiên
+      </button>
+      <button id="btnExport" class="btn btn-success btn-full" disabled>
+        <span>📊</span> Xuất Excel (.xlsx)
+      </button>
+      <button id="btnClear" class="btn btn-danger btn-full">
+        <span>🗑️</span> Xoá Tất Cả
+      </button>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Log -->
+    <div>
+      <div class="section-label">📋 Nhật ký</div>
+      <div class="log-box" id="logBox"></div>
+    </div>
+
+    <!-- Info -->
+    <div style="font-size:11px; color:var(--text-muted); line-height:1.6; padding-top:4px;">
+      <strong style="color:var(--text-primary)">Lưu ý:</strong><br />
+      • Địa chỉ thực (số nhà + đường) từ <a href="https://www.openstreetmap.org" target="_blank" style="color:var(--accent)">OpenStreetMap</a><br />
+      • Dùng <a href="https://overpass-api.de" target="_blank" style="color:var(--accent)">Overpass API</a> để lấy địa chỉ có số nhà<br />
+      • Nên nhập tên <strong style="color:var(--text-primary)">Phường/Quận</strong> cụ thể<br />
+      • Cấu trúc mới: <strong style="color:var(--text-primary)">Tỉnh/TP → Phường/Xã</strong><br />
+      • Dữ liệu bản đồ: © OpenStreetMap contributors
+    </div>
+
+  </aside>
+
+  <!-- ===== MAP ===== -->
+  <div id="mapContainer">
+    <div id="map"></div>
+
+    <!-- Map overlay chips -->
+    <div class="map-overlay">
+      <div class="map-chip" id="mapZoneChip">Khu vực: <span>Chưa chọn</span></div>
+    </div>
+
+    <!-- Empty state overlay -->
+    <div id="mapPlaceholder">
+      <div class="map-ph-icon">🗺️</div>
+      <div class="map-ph-text">Nhập khu vực và nhấn <strong>Pick Ngẫu Nhiên</strong> để bắt đầu</div>
+    </div>
+  </div>
+
+  <!-- ===== RESULTS ===== -->
+  <section id="resultsPanel">
+    <div class="results-header">
+      <h3>📋 Kết quả địa điểm</h3>
+      <span class="result-count" id="resultCount">0</span>
+      <span style="font-size:11px;color:var(--text-muted);margin-left:4px;">điểm</span>
+      <div class="spacer"></div>
+      <span style="font-size:11px;color:var(--text-muted)">Click vào hàng để xem trên bản đồ</span>
+    </div>
+    <div class="table-wrap">
+      <table id="resultsTable">
+        <thead>
+          <tr>
+            <th style="text-align:center">#</th>
+            <th>Địa chỉ cụ thể</th>
+            <th>Tỉnh / Thành phố</th>
+            <th>Phường / Xã</th>
+            <th>Latitude</th>
+            <th>Longitude</th>
+          </tr>
+        </thead>
+        <tbody id="resultsBody">
+          <!-- rows injected by JS -->
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- SheetJS (xlsx) for Excel export -->
+<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+
+<!-- App JS -->
+<script src="app.js"></script>
+</body>
+</html>

@@ -9,6 +9,9 @@ import urllib.parse
 import time
 import unidecode
 
+# Cache đường phố theo từng quận để tránh gọi API nhiều lần
+_streets_cache = {}
+
 def normalize_string(s):
     return unidecode.unidecode(s.lower()).strip()
 
@@ -128,6 +131,90 @@ def pick_nearby_amenities(province_amenities):
     selected = random.sample(province_amenities, min(4, len(province_amenities)))
     return "Gần các địa điểm:\n- " + "\n- ".join(selected)
 
+def get_streets_for_district(district_name, province_name):
+    """
+    Lấy danh sách đường thực tế trong một quận/huyện.
+    Quy trình:
+      1. Nominatim: geocode '{district_name}, {province_name}' -> (lat, lon) trung tâm quận
+      2. Overpass: lấy tối đa 150 đường trong vòng bán kính 3km quanh trung tâm đó
+      3. Cache kết quả theo quận để không gọi API lại
+    Trả về list các tuple (street_name, lat, lon).
+    """
+    cache_key = f"{district_name}|{province_name}"
+    if cache_key in _streets_cache:
+        return _streets_cache[cache_key]
+
+    headers = {'User-Agent': 'MockDataGenerator/2.0 (contact@example.com)'}
+    streets = []
+
+    # Bước 1: Nominatim geocode trung tâm quận
+    center_lat, center_lon = None, None
+    try:
+        query = f"{district_name}, {province_name}, Vietnam"
+        nom_url = (
+            "https://nominatim.openstreetmap.org/search"
+            f"?q={urllib.parse.quote(query)}&format=json&limit=1"
+        )
+        r = requests.get(nom_url, headers=headers, timeout=10)
+        if r.status_code == 200 and r.json():
+            result = r.json()[0]
+            center_lat = float(result['lat'])
+            center_lon = float(result['lon'])
+            print(f"  [Nominatim] '{district_name}' -> ({center_lat:.4f}, {center_lon:.4f})")
+        else:
+            print(f"  [Nominatim] Không tìm thấy tọa độ cho '{district_name}'.")
+    except Exception as e:
+        print(f"  [Nominatim] Lỗi: {e}")
+
+    # Bước 2: Overpass lấy đường quanh trung tâm quận
+    if center_lat and center_lon:
+        try:
+            time.sleep(0.5)  # Tránh rate limit Nominatim
+            overpass_query = (
+                f"[out:json][timeout:20];\n"
+                f"(\n"
+                f"  way[\"highway\"~\"primary|secondary|tertiary|residential|living_street\"]"
+                f"[\"name\"](around:3000,{center_lat},{center_lon});\n"
+                f");\n"
+                f"out center tags 150;\n"
+            )
+            r2 = requests.post(
+                "https://overpass-api.de/api/interpreter",
+                data={'data': overpass_query},
+                timeout=25
+            )
+            if r2.status_code == 200:
+                elements = r2.json().get('elements', [])
+                seen = set()
+                for el in elements:
+                    name = el.get('tags', {}).get('name', '').strip()
+                    c = el.get('center', {})
+                    lat = c.get('lat')
+                    lon = c.get('lon')
+                    if name and lat and lon and name not in seen:
+                        seen.add(name)
+                        streets.append((name, lat, lon))
+                print(f"  [Overpass] Tìm thấy {len(streets)} đường gần '{district_name}'.")
+            else:
+                print(f"  [Overpass] HTTP {r2.status_code} cho '{district_name}'.")
+        except Exception as e:
+            print(f"  [Overpass] Lỗi: {e}")
+
+    # Fallback nếu không có kết quả
+    if not streets:
+        print(f"  [Fallback] Dùng danh sách đường mặc định cho '{district_name}'.")
+        fallback = [
+            "Nguyễn Huệ", "Lê Lợi", "Trần Hưng Đạo", "Điện Biên Phủ",
+            "Nguyễn Thị Minh Khai", "Hai Bà Trưng", "Hùng Vương", "Lê Duẩn",
+            "Nguyễn Trãi", "Lê Văn Sỹ", "Cách Mạng Tháng 8", "Nam Kỳ Khởi Nghĩa",
+        ]
+        streets = [(s, None, None) for s in fallback]
+
+    _streets_cache[cache_key] = streets
+    return streets
+
+
+
 def generate_mock_data(search_term, num_records, base_output_file):
     print("Đang tải danh sách dữ liệu hành chính từ API...")
     try:
@@ -155,37 +242,24 @@ def generate_mock_data(search_term, num_records, base_output_file):
         
     # Tải tiện ích toàn tỉnh 1 lần duy nhất
     province_amenities = load_province_amenities(province_name)
-        
+
     records = []
-    
-    VIETNAM_STREETS = [
-        "Nguyễn Huệ", "Lê Lợi", "Trần Hưng Đạo", "Điện Biên Phủ", "Nguyễn Thị Minh Khai",
-        "Lý Thường Kiệt", "Hai Bà Trưng", "Phan Chu Trinh", "Hùng Vương", "Lê Duẩn",
-        "Nguyễn Văn Linh", "Phạm Văn Đồng", "Trường Chinh", "Hoàng Văn Thụ", "Cống Quỳnh",
-        "Bùi Viện", "Đề Thám", "Phạm Ngũ Lão", "Nguyễn Trãi", "Lê Văn Sỹ",
-        "Cách Mạng Tháng 8", "Nam Kỳ Khởi Nghĩa", "Đinh Tiên Hoàng", "Võ Văn Tần",
-        "Phan Đình Phùng", "Trần Phú", "Pasteur", "Alexandre de Rhodes", "Đồng Khởi",
-        "Ngô Đức Kế", "Hoàng Diệu", "Bến Chương Dương", "Nguyễn Đình Chiểu", "Hồ Xuân Hương",
-        "Lê Quý Đôn", "Cao Thắng", "Nguyễn Thiện Thuật", "Bắc Hải", "Lý Chính Thắng",
-        "Võ Thị Sáu", "Phạm Viết Chánh", "Nguyễn Công Trứ", "Nguyễn Đức Cảnh", "Trần Văn Kiểu",
-        "Bình Thới", "An Dương Vương", "Lạc Long Quân", "Tô Hiến Thành", "Sư Vạn Hạnh",
-        "Lý Nam Đế", "Trần Nhật Duật", "Nguyễn Lương Bằng", "Hoàng Sa", "Trường Sa",
-        "Châu Văn Liêm", "Phú Lâm", "Bình Long", "Âu Cơ", "Đặng Văn Bi",
-    ]
-    
+
     print(f"Đang sinh ngẫu nhiên {num_records} địa chỉ...")
     for _ in range(num_records):
         district = random.choice(districts)
         wards = district.get('wards', [])
-        
+
         ward_name = ""
         if wards:
             ward = random.choice(wards)
             ward_name = ward.get('name', '')
-            
-        # Address format: Số nhà, Tên đường, Phường/Xã, Quận/Huyện, Tỉnh/Thành phố
-        street_name = random.choice(VIETNAM_STREETS)
+
+        # Lấy đường thực tế của quận từ Nominatim + Overpass (có cache)
+        street_entries = get_streets_for_district(district['name'], province_name)
+        street_name, street_lat, street_lon = random.choice(street_entries)
         building_num = str(random.randint(1, 300))
+
         
         full_address_parts = [f"{building_num} {street_name}"]
         if ward_name:
@@ -238,11 +312,13 @@ def generate_mock_data(search_term, num_records, base_output_file):
             "City": province_name,
             "District": district['name'],
             "Ward": ward_name,
+            "Latitude": street_lat,
+            "Longitude": street_lon,
             "Area": area,
             "Bedrooms": bedrooms,
             "Bathrooms": bathrooms,
             "MonthlyRent": monthly_rent,
-            "DepositAmount": monthly_rent * random.randint(1, 3), # Deposit 1-3 months
+            "DepositAmount": monthly_rent * random.randint(1, 3),
             "Amenities": internal_amenities,
             "AllowPets": "Có" in pet_friendly,
             "AllowSmoking": "Cho phép hút thuốc" in smoking,
