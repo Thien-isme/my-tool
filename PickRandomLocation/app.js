@@ -183,29 +183,46 @@ function debounce(fn, delay) {
   return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), delay); };
 }
 
-// Preview a Nominatim result on the map without triggering a full pick
+// Preview bounding box từ Photon extent hoặc Nominatim polygon
 function previewAreaOnMap(result) {
   if (!result) return;
-  const bbox_raw = result.boundingbox;
-  if (!bbox_raw) return;
-  const bbox = bbox_raw.map(parseFloat);
-  const geojson = result.geojson;
-
   if (state.polygonLayer) state.map.removeLayer(state.polygonLayer);
-  if (geojson) {
-    state.polygonLayer = L.geoJSON(geojson, {
-      style: {
-        color: '#3b82f6',
-        weight: 2,
-        fillColor: '#3b82f6',
-        fillOpacity: 0.08,
-        dashArray: '5,5',
-      }
-    }).addTo(state.map);
+
+  // Nếu đã có dữ liệu Nominatim đính kèm (sau khi user chọn)
+  if (result._nominatim) {
+    const nm = result._nominatim;
+    const bbox = nm.boundingbox.map(parseFloat);
+    if (nm.geojson) {
+      state.polygonLayer = L.geoJSON(nm.geojson, {
+        style: { color: '#3b82f6', weight: 2, fillColor: '#3b82f6', fillOpacity: 0.08, dashArray: '5,5' }
+      }).addTo(state.map);
+    }
+    state.map.fitBounds([[bbox[0], bbox[2]], [bbox[1], bbox[3]]], { padding: [20, 20] });
+    const label = nm.display_name ? nm.display_name.split(',')[0] : (result.properties.name || '');
+    mapZoneChip.innerHTML = `Xem tr&#432;&#7899;c: <span>${label}</span>`;
+  } else {
+    // Photon result – preview nhanh bằng extent
+    const p = result.properties || {};
+    const ext = p.extent; // [minLon, maxLat, maxLon, minLat]
+    if (ext) {
+      state.map.fitBounds([[ext[3], ext[0]], [ext[1], ext[2]]], { padding: [20, 20] });
+    } else {
+      const [lon, lat] = result.geometry.coordinates;
+      state.map.setView([lat, lon], 13);
+    }
+    mapZoneChip.innerHTML = `Xem tr&#432;&#7899;c: <span>${p.name || ''}</span>`;
   }
-  state.map.fitBounds([[bbox[0], bbox[2]], [bbox[1], bbox[3]]], { padding: [20, 20] });
   mapPlaceholder.classList.add('hidden');
-  mapZoneChip.innerHTML = `Xem trước: <span>${result.display_name.split(',')[0]}</span>`;
+}
+
+// Nominatim lookup bằng OSM ID để lấy polygon ranh giới
+async function fetchNominatimByOsmId(osmType, osmId) {
+  const prefix = { node: 'N', way: 'W', relation: 'R' }[(osmType || '').toLowerCase()] || 'R';
+  const url = `https://nominatim.openstreetmap.org/lookup?` +
+    new URLSearchParams({ osm_ids: `${prefix}${osmId}`, format: 'json', polygon_geojson: 1, addressdetails: 1 });
+  const resp = await fetch(url, { headers: { 'Accept-Language': 'vi,en' } });
+  const data = await resp.json();
+  return data[0] || null;
 }
 
 function attachAutocomplete(inputEl, acDropdown) {
@@ -214,7 +231,6 @@ function attachAutocomplete(inputEl, acDropdown) {
     acDropdown.innerHTML = '';
     if (q.length < 2) { acDropdown.style.display = 'none'; return; }
 
-    // Show loading indicator
     const loading = document.createElement('div');
     loading.className = 'ac-item ac-loading';
     loading.textContent = 'Đang tìm...';
@@ -222,16 +238,19 @@ function attachAutocomplete(inputEl, acDropdown) {
     acDropdown.style.display = 'block';
 
     try {
-      const url = `https://nominatim.openstreetmap.org/search?` +
-        new URLSearchParams({
-          q: q + ', Vietnam',
-          format: 'json',
-          addressdetails: 1,
-          polygon_geojson: 1,
-          limit: 7,
-        });
-      const resp = await fetch(url, { headers: { 'Accept-Language': 'vi,en' } });
-      const results = await resp.json();
+      // Photon API – không bị rate-limit như Nominatim
+      // lang:'en' để country trả về "Vietnam" nhất quán với filter bên dưới
+      const url = `https://photon.komoot.io/api/?` +
+        new URLSearchParams({ q: q, limit: 10, lang: 'en', lat: 16.047, lon: 108.206 });
+      const resp = await fetch(url);
+      const data = await resp.json();
+
+      // Lọc chỉ kết quả ở Việt Nam (country có thể là "Vietnam" hoặc rỗng khi bias đã đủ)
+      const results = (data.features || []).filter(f => {
+        const country = (f.properties.country || '').toLowerCase()
+          .normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // bỏ dấu để so sánh
+        return !country || country.includes('viet') || country.includes('vietnam');
+      }).slice(0, 7);
 
       acDropdown.innerHTML = '';
       if (!results.length) {
@@ -244,23 +263,33 @@ function attachAutocomplete(inputEl, acDropdown) {
       }
 
       results.forEach(r => {
+        const p = r.properties;
+        const mainName = p.name || p.city || p.state || '';
+        const subParts = [p.city, p.county, p.state].filter(x => x && x !== mainName);
+        const subName = subParts.slice(0, 2).join(', ');
+
         const item = document.createElement('div');
         item.className = 'ac-item';
-        const displayParts = r.display_name.split(',');
-        const mainName = displayParts[0].trim();
-        const subName = displayParts.slice(1, 3).join(',').trim();
         item.innerHTML = `<span class="ac-icon">📍</span><span class="ac-main">${mainName}</span><span class="ac-type">${subName}</span>`;
 
-        // Hover: preview on map
+        // Hover → preview nhanh bằng extent (không tốn API call)
         item.addEventListener('mouseenter', () => previewAreaOnMap(r));
 
-        // Click: select and fill input
-        item.addEventListener('mousedown', e => {
+        // Click → chọn địa điểm, rồi tải polygon từ Nominatim
+        item.addEventListener('mousedown', async e => {
           e.preventDefault();
           inputEl.value = mainName;
           acDropdown.style.display = 'none';
-          previewAreaOnMap(r);
           updateTotals();
+          previewAreaOnMap(r); // preview nhanh trước
+
+          // Gọi Nominatim 1 lần bằng OSM ID để lấy polygon ranh giới
+          if (p.osm_id) {
+            try {
+              const nm = await fetchNominatimByOsmId(p.osm_type, p.osm_id);
+              if (nm) { r._nominatim = nm; previewAreaOnMap(r); }
+            } catch (_) { /* giữ preview bằng extent */ }
+          }
         });
         acDropdown.appendChild(item);
       });
@@ -269,11 +298,11 @@ function attachAutocomplete(inputEl, acDropdown) {
       acDropdown.innerHTML = '';
       const errEl = document.createElement('div');
       errEl.className = 'ac-item ac-no-result';
-      errEl.textContent = 'Lỗi kết nối';
+      errEl.textContent = 'Lỗi kết nối – kiểm tra mạng';
       acDropdown.appendChild(errEl);
       acDropdown.style.display = 'block';
     }
-  }, 400);
+  }, 500);
 
   inputEl.addEventListener('input', doSearch);
   inputEl.addEventListener('blur', () => {
