@@ -177,32 +177,107 @@ function getAreaRows() {
   }));
 }
 
+// Debounce helper
+function debounce(fn, delay) {
+  let timer;
+  return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), delay); };
+}
+
+// Preview a Nominatim result on the map without triggering a full pick
+function previewAreaOnMap(result) {
+  if (!result) return;
+  const bbox_raw = result.boundingbox;
+  if (!bbox_raw) return;
+  const bbox = bbox_raw.map(parseFloat);
+  const geojson = result.geojson;
+
+  if (state.polygonLayer) state.map.removeLayer(state.polygonLayer);
+  if (geojson) {
+    state.polygonLayer = L.geoJSON(geojson, {
+      style: {
+        color: '#3b82f6',
+        weight: 2,
+        fillColor: '#3b82f6',
+        fillOpacity: 0.08,
+        dashArray: '5,5',
+      }
+    }).addTo(state.map);
+  }
+  state.map.fitBounds([[bbox[0], bbox[2]], [bbox[1], bbox[3]]], { padding: [20, 20] });
+  mapPlaceholder.classList.add('hidden');
+  mapZoneChip.innerHTML = `Xem trước: <span>${result.display_name.split(',')[0]}</span>`;
+}
+
 function attachAutocomplete(inputEl, acDropdown) {
-  inputEl.addEventListener('input', () => {
-    const q = inputEl.value.trim().toLowerCase();
+  const doSearch = debounce(async () => {
+    const q = inputEl.value.trim();
     acDropdown.innerHTML = '';
-    if (!q) { acDropdown.style.display = 'none'; return; }
-    const matches = adminData.provinces.filter(p =>
-      p.name.toLowerCase().includes(q) ||
-      p.search_name.toLowerCase().includes(q)
-    ).slice(0, 7);
-    if (!matches.length) { acDropdown.style.display = 'none'; return; }
-    matches.forEach(p => {
-      const item = document.createElement('div');
-      item.className = 'ac-item';
-      item.innerHTML = `<span class="ac-icon">📍</span>${p.name}<span class="ac-type">${p.type === 'city' ? 'Thành phố' : 'Tỉnh'}</span>`;
-      item.addEventListener('mousedown', e => {
-        e.preventDefault();
-        inputEl.value = p.name;
-        acDropdown.style.display = 'none';
-        updateTotals();
-      });
-      acDropdown.appendChild(item);
-    });
+    if (q.length < 2) { acDropdown.style.display = 'none'; return; }
+
+    // Show loading indicator
+    const loading = document.createElement('div');
+    loading.className = 'ac-item ac-loading';
+    loading.textContent = 'Đang tìm...';
+    acDropdown.appendChild(loading);
     acDropdown.style.display = 'block';
-  });
+
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?` +
+        new URLSearchParams({
+          q: q + ', Vietnam',
+          format: 'json',
+          addressdetails: 1,
+          polygon_geojson: 1,
+          limit: 7,
+        });
+      const resp = await fetch(url, { headers: { 'Accept-Language': 'vi,en' } });
+      const results = await resp.json();
+
+      acDropdown.innerHTML = '';
+      if (!results.length) {
+        const noRes = document.createElement('div');
+        noRes.className = 'ac-item ac-no-result';
+        noRes.textContent = 'Không tìm thấy kết quả';
+        acDropdown.appendChild(noRes);
+        acDropdown.style.display = 'block';
+        return;
+      }
+
+      results.forEach(r => {
+        const item = document.createElement('div');
+        item.className = 'ac-item';
+        const displayParts = r.display_name.split(',');
+        const mainName = displayParts[0].trim();
+        const subName = displayParts.slice(1, 3).join(',').trim();
+        item.innerHTML = `<span class="ac-icon">📍</span><span class="ac-main">${mainName}</span><span class="ac-type">${subName}</span>`;
+
+        // Hover: preview on map
+        item.addEventListener('mouseenter', () => previewAreaOnMap(r));
+
+        // Click: select and fill input
+        item.addEventListener('mousedown', e => {
+          e.preventDefault();
+          inputEl.value = mainName;
+          acDropdown.style.display = 'none';
+          previewAreaOnMap(r);
+          updateTotals();
+        });
+        acDropdown.appendChild(item);
+      });
+      acDropdown.style.display = 'block';
+    } catch (err) {
+      acDropdown.innerHTML = '';
+      const errEl = document.createElement('div');
+      errEl.className = 'ac-item ac-no-result';
+      errEl.textContent = 'Lỗi kết nối';
+      acDropdown.appendChild(errEl);
+      acDropdown.style.display = 'block';
+    }
+  }, 400);
+
+  inputEl.addEventListener('input', doSearch);
   inputEl.addEventListener('blur', () => {
-    setTimeout(() => { acDropdown.style.display = 'none'; }, 150);
+    setTimeout(() => { acDropdown.style.display = 'none'; }, 200);
   });
 }
 

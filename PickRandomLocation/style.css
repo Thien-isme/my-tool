@@ -162,8 +162,13 @@ html, body {
   transition: background var(--transition);
 }
 .ac-item:hover, .ac-item.active { background: rgba(59,130,246,0.15); }
-.ac-item .ac-icon { color: var(--accent); font-size: 12px; }
-.ac-item .ac-type { font-size: 10px; color: var(--text-muted); margin-left: auto; }
+.ac-item .ac-icon { color: var(--accent); font-size: 12px; flex-shrink: 0; }
+.ac-item .ac-main { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ac-item .ac-type { font-size: 10px; color: var(--text-muted); margin-left: 6px; flex-shrink: 0; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ac-item.ac-loading { color: var(--text-muted); font-style: italic; cursor: default; }
+.ac-item.ac-loading:hover { background: transparent; }
+.ac-item.ac-no-result { color: var(--text-muted); cursor: default; font-style: italic; }
+.ac-item.ac-no-result:hover { background: transparent; }
 
 /* ===== CONTROLS ===== */
 .control-row {
