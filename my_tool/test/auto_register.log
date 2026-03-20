@@ -335,3 +335,74 @@ Call log:
 [2026-03-21 03:36:05] INFO       ✅ Sau khi xác minh xong, script sẽ tự động tiếp tục!
 [2026-03-21 03:36:05] INFO     =======================================================
 [2026-03-21 03:36:05] INFO     
+[2026-03-21 03:43:14] INFO     🚀 Bắt đầu Auto Register Tool
+[2026-03-21 03:43:14] INFO        Số tài khoản cần tạo: 1
+[2026-03-21 03:43:14] INFO        Headless: False
+[2026-03-21 03:43:14] INFO        Chờ xác minh thủ công: True
+[2026-03-21 03:43:14] INFO        Browser profile: browser_profile
+[2026-03-21 03:43:14] INFO     
+[2026-03-21 03:43:15] INFO        🌐 Proxy: Không (dùng IP trực tiếp)
+[2026-03-21 03:43:15] INFO     
+[2026-03-21 03:43:15] INFO     🌡️  Làm ấm browser profile...
+[2026-03-21 03:43:15] INFO        Lướt web tạo history/cookies để Google tin tưởng hơn.
+[2026-03-21 03:43:15] INFO     
+[2026-03-21 03:43:15] INFO        🌐 Google Search...
+[2026-03-21 03:43:16] DEBUG       ⚠️ Warmup 'Google Search' lỗi: Page.goto: net::ERR_ABORTED; maybe frame was detached?
+Call log:
+  - navigating to "https://www.google.com/", waiting until "domcontentloaded"
+
+[2026-03-21 03:43:16] INFO        🌐 YouTube...
+[2026-03-21 03:43:16] DEBUG       ⚠️ Warmup 'YouTube' lỗi: Page.goto: Target page, context or browser has been closed
+[2026-03-21 03:43:16] INFO        🌐 Google Maps...
+[2026-03-21 03:43:16] DEBUG       ⚠️ Warmup 'Google Maps' lỗi: Page.goto: Target page, context or browser has been closed
+[2026-03-21 03:43:16] INFO        🌐 Wikipedia...
+[2026-03-21 03:43:16] DEBUG       ⚠️ Warmup 'Wikipedia' lỗi: Page.goto: Target page, context or browser has been closed
+[2026-03-21 03:43:16] INFO        🌐 Google Search 2...
+[2026-03-21 03:43:16] DEBUG       ⚠️ Warmup 'Google Search 2' lỗi: Page.goto: Target page, context or browser has been closed
+[2026-03-21 03:43:16] INFO        🌐 Gmail Login Page...
+[2026-03-21 03:43:16] DEBUG       ⚠️ Warmup 'Gmail Login Page' lỗi: Page.goto: Target page, context or browser has been closed
+[2026-03-21 03:43:16] INFO     
+[2026-03-21 03:43:16] INFO     ✅  Làm ấm hoàn tất! Browser đã có history/cookies.
+[2026-03-21 03:43:16] INFO     
+[2026-03-21 03:43:32] INFO     🚀 Bắt đầu Auto Register Tool
+[2026-03-21 03:43:32] INFO        Số tài khoản cần tạo: 1
+[2026-03-21 03:43:32] INFO        Headless: False
+[2026-03-21 03:43:32] INFO        Chờ xác minh thủ công: True
+[2026-03-21 03:43:32] INFO        Browser profile: browser_profile
+[2026-03-21 03:43:32] INFO     
+[2026-03-21 03:43:33] INFO        🌐 Proxy: Không (dùng IP trực tiếp)
+[2026-03-21 03:43:33] INFO     🌡️  Browser đã được làm ấm trước đó → bỏ qua.
+[2026-03-21 03:43:33] INFO        (Xóa file browser_profile/.warmup_done để làm ấm lại)
+[2026-03-21 03:43:33] INFO     
+[2026-03-21 03:43:33] INFO     [1/1] Tạo: Trang La | trang.la.ehch@gmail.com
+[2026-03-21 03:43:33] DEBUG    → Mở trang đăng ký...
+[2026-03-21 03:43:46] DEBUG    → Click 'Tạo tài khoản'...
+[2026-03-21 03:44:03] DEBUG    → Điền tên: Trang La
+[2026-03-21 03:44:09] DEBUG    → Điền ngày sinh: 20/07/1995 | Giới tính: female
+[2026-03-21 03:44:23] DEBUG      Tìm thấy 0 <select> trên trang
+[2026-03-21 03:44:37] DEBUG      ✓ Tháng: chọn bằng custom dropdown '7'
+[2026-03-21 03:44:37] DEBUG      ✓ Ngày: điền bằng selector '#day'
+[2026-03-21 03:44:38] DEBUG      ✓ Năm: điền bằng selector '#year'
+[2026-03-21 03:44:40] DEBUG      Gender element '#gender' tag: div
+[2026-03-21 03:44:41] DEBUG      ✓ Giới tính: chọn 'Nữ' qua ##gender
+[2026-03-21 03:44:42] DEBUG    → Kiểm tra yêu cầu xác minh...
+[2026-03-21 03:45:10] DEBUG    → Không yêu cầu xác minh ✓
+[2026-03-21 03:45:10] DEBUG    → Chọn username: trang.la.ehch
+[2026-03-21 03:45:16] DEBUG    → Nhập mật khẩu: **************
+[2026-03-21 03:45:27] DEBUG    → Kiểm tra yêu cầu xác minh...
+[2026-03-21 03:45:32] WARNING  ⚠️ Phát hiện yêu cầu xác minh: text=Xác minh một số thông tin
+[2026-03-21 03:45:32] DEBUG    Screenshot saved: screenshots\verification_required_20260321_034532.png
+[2026-03-21 03:45:44] INFO     
+[2026-03-21 03:45:44] INFO     =======================================================
+[2026-03-21 03:45:44] INFO     📱  CẦN XÁC MINH THỦ CÔNG
+[2026-03-21 03:45:44] INFO     =======================================================
+[2026-03-21 03:45:44] INFO       Google yêu cầu xác minh trước khi tạo tài khoản.
+[2026-03-21 03:45:44] INFO       Hãy thực hiện xác minh trên cửa sổ trình duyệt:
+[2026-03-21 03:45:44] INFO         • Quét mã QR bằng điện thoại, HOẶC
+[2026-03-21 03:45:44] INFO         • Nhập số điện thoại + mã OTP, HOẶC
+[2026-03-21 03:45:44] INFO         • Giải CAPTCHA
+[2026-03-21 03:45:44] INFO     
+[2026-03-21 03:45:44] INFO       ⏳ Script sẽ chờ tối đa 300s...
+[2026-03-21 03:45:44] INFO       ✅ Sau khi xác minh xong, script sẽ tự động tiếp tục!
+[2026-03-21 03:45:44] INFO     =======================================================
+[2026-03-21 03:45:44] INFO     

@@ -518,7 +518,10 @@ class AutoRegister:
                     cmd = step[0]
 
                     if cmd == "goto":
-                        page.goto(step[1], wait_until="domcontentloaded", timeout=15000)
+                        try:
+                            page.goto(step[1], wait_until="domcontentloaded", timeout=20000)
+                        except Exception as nav_err:
+                            self.logger.debug(f"      Không load được {step[1]}: {nav_err}")
                     elif cmd == "wait":
                         delay = step[1] + random.uniform(0.5, 2.0)
                         time.sleep(delay)
@@ -527,14 +530,21 @@ class AutoRegister:
                             el = page.wait_for_selector(step[1], timeout=5000)
                             if el:
                                 el.click()
+                                time.sleep(0.5)
                                 for char in step[2]:
                                     page.keyboard.type(char, delay=random.randint(80, 200))
                         except Exception:
                             pass
                     elif cmd == "press":
-                        page.keyboard.press(step[1])
+                        try:
+                            page.keyboard.press(step[1])
+                        except Exception:
+                            pass
                     elif cmd == "scroll":
-                        page.mouse.wheel(0, step[1])
+                        try:
+                            page.mouse.wheel(0, step[1])
+                        except Exception:
+                            pass
                     elif cmd == "click":
                         try:
                             self._safe_click(page, step[1], timeout=3000)
@@ -1531,12 +1541,21 @@ class AutoRegister:
                         )
                         account = generate_account_info()
 
-                    page = context.new_page()
+                    # Dùng page có sẵn hoặc tạo mới
+                    try:
+                        if context.pages:
+                            page = context.pages[0]
+                            page.goto("about:blank")
+                        else:
+                            page = context.new_page()
+                    except Exception:
+                        page = context.new_page()
 
                     try:
                         success = self.create_single_account(page, account, i)
-                    finally:
-                        page.close()
+                    except Exception as e:
+                        self.logger.error(f"Lỗi: {e}")
+                        self._screenshot(page, f"error_{i + 1}")
 
                     if success:
                         break
