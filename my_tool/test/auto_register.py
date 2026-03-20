@@ -362,7 +362,132 @@ class AutoRegister:
 
         return context
 
-    # ------------ Registration Flow ------------
+    # ------------ Browser Warmup ------------
+
+    def warmup_browser(self, context: BrowserContext):
+        """Làm ấm browser profile: lướt web tạo history/cookies.
+        
+        Giúp Google tin tưởng browser hơn → giảm yêu cầu xác minh.
+        """
+        self.logger.info("")
+        self.logger.info("🌡️  Làm ấm browser profile...")
+        self.logger.info("   Lướt web tạo history/cookies để Google tin tưởng hơn.")
+        self.logger.info("")
+
+        page = context.new_page()
+
+        warmup_actions = [
+            # --- Google Search ---
+            {
+                "name": "Google Search",
+                "steps": [
+                    ("goto", "https://www.google.com"),
+                    ("wait", 3),
+                    ("type", "input[name='q']", "thời tiết hôm nay"),
+                    ("wait", 1),
+                    ("press", "Enter"),
+                    ("wait", 4),
+                    ("scroll", 300),
+                    ("wait", 2),
+                ],
+            },
+            # --- YouTube ---
+            {
+                "name": "YouTube",
+                "steps": [
+                    ("goto", "https://www.youtube.com"),
+                    ("wait", 4),
+                    ("scroll", 500),
+                    ("wait", 3),
+                    ("scroll", 300),
+                    ("wait", 2),
+                ],
+            },
+            # --- Google Maps ---
+            {
+                "name": "Google Maps",
+                "steps": [
+                    ("goto", "https://www.google.com/maps"),
+                    ("wait", 4),
+                    ("scroll", 200),
+                    ("wait", 2),
+                ],
+            },
+            # --- Wikipedia ---
+            {
+                "name": "Wikipedia",
+                "steps": [
+                    ("goto", "https://vi.wikipedia.org"),
+                    ("wait", 3),
+                    ("scroll", 400),
+                    ("wait", 2),
+                    ("scroll", 300),
+                    ("wait", 1),
+                ],
+            },
+            # --- Google lần 2 (tìm kiếm khác) ---
+            {
+                "name": "Google Search 2",
+                "steps": [
+                    ("goto", "https://www.google.com"),
+                    ("wait", 2),
+                    ("type", "input[name='q']", "tin tức việt nam"),
+                    ("wait", 1),
+                    ("press", "Enter"),
+                    ("wait", 4),
+                    ("scroll", 500),
+                    ("wait", 3),
+                ],
+            },
+            # --- Gmail (trang đăng nhập) ---
+            {
+                "name": "Gmail Login Page",
+                "steps": [
+                    ("goto", "https://mail.google.com"),
+                    ("wait", 3),
+                ],
+            },
+        ]
+
+        for action in warmup_actions:
+            try:
+                self.logger.info(f"   🌐 {action['name']}...")
+                for step in action["steps"]:
+                    cmd = step[0]
+
+                    if cmd == "goto":
+                        page.goto(step[1], wait_until="domcontentloaded", timeout=15000)
+                    elif cmd == "wait":
+                        delay = step[1] + random.uniform(0.5, 2.0)
+                        time.sleep(delay)
+                    elif cmd == "type":
+                        try:
+                            el = page.wait_for_selector(step[1], timeout=5000)
+                            if el:
+                                el.click()
+                                for char in step[2]:
+                                    page.keyboard.type(char, delay=random.randint(80, 200))
+                        except Exception:
+                            pass
+                    elif cmd == "press":
+                        page.keyboard.press(step[1])
+                    elif cmd == "scroll":
+                        page.mouse.wheel(0, step[1])
+                    elif cmd == "click":
+                        try:
+                            self._safe_click(page, step[1], timeout=3000)
+                        except Exception:
+                            pass
+
+            except Exception as e:
+                self.logger.debug(f"   ⚠️ Warmup '{action['name']}' lỗi: {e}")
+                continue
+
+        page.close()
+
+        self.logger.info("")
+        self.logger.info("✅  Làm ấm hoàn tất! Browser đã có history/cookies.")
+        self.logger.info("")
 
     def _step_open_signup(self, page: Page):
         """Bước 1: Mở trang đăng ký."""
@@ -1245,6 +1370,17 @@ class AutoRegister:
                 window.chrome = { runtime: {}, loadTimes: function(){}, csi: function(){}, app: {} };
             """)
 
+            # Làm ấm browser profile nếu chưa từng làm
+            warmup_marker = os.path.join(self.config.user_data_dir, ".warmup_done")
+            if not os.path.exists(warmup_marker):
+                self.warmup_browser(context)
+                with open(warmup_marker, "w") as f:
+                    f.write(datetime.now().isoformat())
+            else:
+                self.logger.info("🌡️  Browser đã được làm ấm trước đó → bỏ qua.")
+                self.logger.info("   (Xóa file browser_profile/.warmup_done để làm ấm lại)")
+                self.logger.info("")
+
             for i in range(self.config.num_accounts):
                 account = generate_account_info()
                 success = False
@@ -1291,18 +1427,45 @@ class AutoRegister:
 # ▶️  ENTRY POINT
 # ============================================================
 if __name__ == "__main__":
-    config = Config(
-        num_accounts=1,                        # Tạo 1 tài khoản (ít bị phát hiện)
-        headless=False,                        # Hiện browser
-        wait_for_human_verification=True,      # Chờ bạn xác minh thủ công
-        verification_timeout=300,              # Chờ tối đa 5 phút
+    import argparse
 
-        # ====== CẤU HÌNH PROXY (bỏ comment để dùng) ======
-        # Dùng residential proxy giúp skip verification
-        # proxy_server="http://your-proxy-host:port",
-        # proxy_username="your_username",
-        # proxy_password="your_password",
+    parser = argparse.ArgumentParser(description="Auto Register Google Account")
+    parser.add_argument("--warmup", action="store_true",
+                        help="Chỉ làm ấm browser profile (không tạo tài khoản)")
+    parser.add_argument("--accounts", type=int, default=1,
+                        help="Số tài khoản cần tạo (mặc định: 1)")
+    parser.add_argument("--proxy", type=str, default="",
+                        help="Proxy server (VD: http://host:port)")
+    parser.add_argument("--proxy-user", type=str, default="",
+                        help="Proxy username")
+    parser.add_argument("--proxy-pass", type=str, default="",
+                        help="Proxy password")
+    args = parser.parse_args()
+
+    config = Config(
+        num_accounts=args.accounts,
+        headless=False,
+        wait_for_human_verification=True,
+        verification_timeout=300,
+        proxy_server=args.proxy,
+        proxy_username=args.proxy_user,
+        proxy_password=args.proxy_pass,
     )
 
     tool = AutoRegister(config)
-    tool.run()
+
+    if args.warmup:
+        # Chỉ làm ấm, không tạo tài khoản
+        from playwright.sync_api import sync_playwright as sp
+        Path(config.user_data_dir).mkdir(parents=True, exist_ok=True)
+        with sp() as p:
+            ctx = p.chromium.launch_persistent_context(
+                user_data_dir=config.user_data_dir,
+                headless=False,
+                args=["--disable-blink-features=AutomationControlled"],
+            )
+            tool.warmup_browser(ctx)
+            ctx.close()
+        print("\n✅ Làm ấm xong! Giờ chạy lại không có --warmup để tạo tài khoản.")
+    else:
+        tool.run()
