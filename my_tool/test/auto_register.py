@@ -49,11 +49,11 @@ class Config:
     delay_between_accounts: tuple = (5, 10)
 
     # Delay ngẫu nhiên giữa các thao tác (giây) — [min, max]
-    # Tăng cao để giống người thật hơn
-    action_delay: tuple = (1.0, 3.0)
+    # Cân bằng giữa tốc độ và stealth
+    action_delay: tuple = (0.5, 1.5)
 
     # Delay khi gõ từng ký tự (ms) — [min, max]
-    typing_delay: tuple = (80, 200)
+    typing_delay: tuple = (50, 120)
 
     # Timeout chờ element xuất hiện (ms)
     element_timeout: int = 15000
@@ -291,46 +291,35 @@ class AutoRegister:
         return random.randint(*self.config.typing_delay)
 
     def _human_mouse_move(self, page: Page, target_x: int, target_y: int):
-        """Di chuột theo đường cong Bézier tự nhiên như người thật.
-        
-        reCAPTCHA v3 theo dõi chuyển động chuột rất kỹ.
-        Bot di chuột thẳng, người thật di chuột theo đường cong.
-        """
-        # Lấy vị trí chuột hiện tại (hoặc random góc màn hình)
+        """Di chuột theo đường cong Bézier tự nhiên (nhanh)."""
         viewport = page.viewport_size or {"width": 1920, "height": 1080}
         start_x = random.randint(100, viewport["width"] - 100)
         start_y = random.randint(100, viewport["height"] - 100)
 
-        # Tạo 2 điểm kiểm soát Bézier (tạo đường cong)
-        ctrl1_x = start_x + random.randint(-100, 100)
-        ctrl1_y = start_y + random.randint(-50, 50)
-        ctrl2_x = target_x + random.randint(-100, 100)
-        ctrl2_y = target_y + random.randint(-50, 50)
+        ctrl1_x = start_x + random.randint(-80, 80)
+        ctrl1_y = start_y + random.randint(-40, 40)
+        ctrl2_x = target_x + random.randint(-80, 80)
+        ctrl2_y = target_y + random.randint(-40, 40)
 
-        # Số bước di chuyển
-        steps = random.randint(15, 30)
+        steps = random.randint(8, 15)  # Nhanh hơn: 8-15 bước
 
         for i in range(steps + 1):
             t = i / steps
-            # Công thức Bézier bậc 3
             x = (1-t)**3 * start_x + 3*(1-t)**2 * t * ctrl1_x + 3*(1-t) * t**2 * ctrl2_x + t**3 * target_x
             y = (1-t)**3 * start_y + 3*(1-t)**2 * t * ctrl1_y + 3*(1-t) * t**2 * ctrl2_y + t**3 * target_y
-
-            # Thêm nhiễu nhỏ ngẫu nhiên
-            x += random.uniform(-2, 2)
-            y += random.uniform(-2, 2)
-
+            x += random.uniform(-1, 1)
+            y += random.uniform(-1, 1)
             page.mouse.move(int(x), int(y))
-            time.sleep(random.uniform(0.005, 0.025))
+            time.sleep(random.uniform(0.003, 0.012))  # Nhanh hơn
 
     def _random_mouse_jitter(self, page: Page):
-        """Di chuột ngẫu nhiên trên trang (giả lập người đang đọc)."""
+        """Di chuột ngẫu nhiên nhanh trên trang."""
         viewport = page.viewport_size or {"width": 1920, "height": 1080}
-        for _ in range(random.randint(2, 5)):
+        for _ in range(random.randint(2, 3)):  # Ít lần hơn
             x = random.randint(200, viewport["width"] - 200)
             y = random.randint(200, viewport["height"] - 200)
             page.mouse.move(x, y)
-            time.sleep(random.uniform(0.1, 0.4))
+            time.sleep(random.uniform(0.05, 0.2))  # Nhanh hơn
 
     def _random_scroll(self, page: Page):
         """Scroll trang ngẫu nhiên như người đọc."""

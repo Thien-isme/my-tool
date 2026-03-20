@@ -1,0 +1,6 @@
+2026/03/21-03:26:57.859 47fc Reusing MANIFEST G:\MyTool\my_tool\test\browser_profile\Default\Local Storage\leveldb/MANIFEST-000001
+2026/03/21-03:26:57.869 47fc Recovering log #3
+2026/03/21-03:26:57.871 47fc Reusing old log G:\MyTool\my_tool\test\browser_profile\Default\Local Storage\leveldb/000003.log 
+2026/03/21-03:27:57.882 3aac Level-0 table #5: started
+2026/03/21-03:27:57.921 3aac Level-0 table #5: 526222 bytes OK
+2026/03/21-03:27:57.986 3aac Delete type=0 #3

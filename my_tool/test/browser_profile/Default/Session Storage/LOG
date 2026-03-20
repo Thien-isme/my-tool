@@ -1,2 +1,3 @@
-2026/03/21-02:31:47.519 6510 Creating DB G:\MyTool\my_tool\test\browser_profile\Default\Session Storage since it was missing.
-2026/03/21-02:31:47.886 6510 Reusing MANIFEST G:\MyTool\my_tool\test\browser_profile\Default\Session Storage/MANIFEST-000001
+2026/03/21-03:33:49.485 d88 Reusing MANIFEST G:\MyTool\my_tool\test\browser_profile\Default\Session Storage/MANIFEST-000001
+2026/03/21-03:33:49.486 d88 Recovering log #3
+2026/03/21-03:33:49.488 d88 Reusing old log G:\MyTool\my_tool\test\browser_profile\Default\Session Storage/000003.log 

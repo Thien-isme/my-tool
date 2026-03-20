@@ -1,2 +1,3 @@
-2026/03/21-02:31:46.351 5ef8 Creating DB G:\MyTool\my_tool\test\browser_profile\Default\Sync Data\LevelDB since it was missing.
-2026/03/21-02:31:46.724 5ef8 Reusing MANIFEST G:\MyTool\my_tool\test\browser_profile\Default\Sync Data\LevelDB/MANIFEST-000001
+2026/03/21-03:33:47.668 6264 Reusing MANIFEST G:\MyTool\my_tool\test\browser_profile\Default\Sync Data\LevelDB/MANIFEST-000001
+2026/03/21-03:33:47.669 6264 Recovering log #3
+2026/03/21-03:33:47.669 6264 Reusing old log G:\MyTool\my_tool\test\browser_profile\Default\Sync Data\LevelDB/000003.log 
