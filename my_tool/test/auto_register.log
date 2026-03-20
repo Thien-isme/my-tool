@@ -1,0 +1,241 @@
+[2026-03-21 01:52:22] INFO     🚀 Bắt đầu Auto Register Tool
+[2026-03-21 01:52:22] INFO        Số tài khoản cần tạo: 5
+[2026-03-21 01:52:22] INFO        Headless: False
+[2026-03-21 01:52:22] INFO     
+[2026-03-21 01:52:24] INFO     [1/5] Tạo: Thi Tran | thi.tran.oapb@gmail.com
+[2026-03-21 01:52:24] DEBUG    → Mở trang đăng ký...
+[2026-03-21 01:52:32] DEBUG    → Click 'Tạo tài khoản'...
+[2026-03-21 01:52:50] DEBUG    → Điền tên: Thi Tran
+[2026-03-21 01:52:57] DEBUG    → Điền ngày sinh: 07/11/2004 | Giới tính: female
+[2026-03-21 01:53:29] ERROR    [1] ❌ Thất bại: Page.select_option: Timeout 30000ms exceeded.
+Call log:
+  - waiting for locator("[name='month']")
+
+[2026-03-21 01:53:29] DEBUG    Screenshot saved: screenshots\error_1_20260321_015329.png
+[2026-03-21 01:53:29] DEBUG    Chờ 4.6s trước khi retry...
+[2026-03-21 01:53:34] INFO     [1] 🔄 Retry lần 1/2...
+[2026-03-21 01:53:34] INFO     [1/5] Tạo: Quang Phan | quang.phan.kvdn@gmail.com
+[2026-03-21 01:53:34] DEBUG    → Mở trang đăng ký...
+[2026-03-21 01:53:40] DEBUG    → Click 'Tạo tài khoản'...
+[2026-03-21 01:53:58] DEBUG    → Điền tên: Quang Phan
+[2026-03-21 01:54:03] DEBUG    → Điền ngày sinh: 07/11/2005 | Giới tính: male
+[2026-03-21 01:54:34] ERROR    [1] ❌ Thất bại: Page.select_option: Timeout 30000ms exceeded.
+Call log:
+  - waiting for locator("[name='month']")
+
+[2026-03-21 01:54:34] DEBUG    Screenshot saved: screenshots\error_1_20260321_015434.png
+[2026-03-21 01:54:34] DEBUG    Chờ 6.3s trước khi retry...
+[2026-03-21 01:54:41] INFO     [1] 🔄 Retry lần 2/2...
+[2026-03-21 01:54:41] INFO     [1/5] Tạo: Trang Vo | trang.vo.h9yz@gmail.com
+[2026-03-21 01:54:41] DEBUG    → Mở trang đăng ký...
+[2026-03-21 01:54:47] DEBUG    → Click 'Tạo tài khoản'...
+[2026-03-21 01:55:05] DEBUG    → Điền tên: Trang Vo
+[2026-03-21 01:55:11] DEBUG    → Điền ngày sinh: 25/11/2006 | Giới tính: male
+[2026-03-21 01:55:41] ERROR    [1] ❌ Thất bại: Page.select_option: Timeout 30000ms exceeded.
+Call log:
+  - waiting for locator("[name='month']")
+
+[2026-03-21 01:55:42] DEBUG    Screenshot saved: screenshots\error_1_20260321_015541.png
+[2026-03-21 01:55:42] DEBUG    Chờ 4.6s trước tài khoản tiếp...
+[2026-03-21 01:55:46] INFO     [2/5] Tạo: Khoa Truong | khoa.truong.bvo5@gmail.com
+[2026-03-21 01:55:46] DEBUG    → Mở trang đăng ký...
+[2026-03-21 02:00:27] INFO     🚀 Bắt đầu Auto Register Tool
+[2026-03-21 02:00:27] INFO        Số tài khoản cần tạo: 5
+[2026-03-21 02:00:27] INFO        Headless: False
+[2026-03-21 02:00:27] INFO     
+[2026-03-21 02:00:28] INFO     [1/5] Tạo: Minh Le | minh.le.97li@gmail.com
+[2026-03-21 02:00:28] DEBUG    → Mở trang đăng ký...
+[2026-03-21 02:00:34] DEBUG    → Click 'Tạo tài khoản'...
+[2026-03-21 02:00:52] DEBUG    → Điền tên: Minh Le
+[2026-03-21 02:00:58] DEBUG    → Điền ngày sinh: 11/07/1980 | Giới tính: male
+[2026-03-21 02:01:10] DEBUG      Tìm thấy 0 <select> trên trang
+[2026-03-21 02:01:24] DEBUG      ✓ Tháng: chọn bằng custom dropdown '7'
+[2026-03-21 02:01:25] DEBUG      ✓ Ngày: điền bằng selector '#day'
+[2026-03-21 02:01:26] DEBUG      ✓ Năm: điền bằng selector '#year'
+[2026-03-21 02:01:42] WARNING    ⚠ Không thể chọn giới tính, bỏ qua.
+[2026-03-21 02:01:44] DEBUG    → Chọn username: minh.le.97li
+[2026-03-21 02:02:16] ERROR    [1] ❌ Thất bại: Không tìm thấy ô nhập username
+[2026-03-21 02:02:16] DEBUG    Screenshot saved: screenshots\error_1_20260321_020216.png
+[2026-03-21 02:02:16] DEBUG    Chờ 4.1s trước khi retry...
+[2026-03-21 02:02:21] INFO     [1] 🔄 Retry lần 1/2...
+[2026-03-21 02:02:21] INFO     [1/5] Tạo: Anh Bui | anh.bui.oe45@gmail.com
+[2026-03-21 02:02:21] DEBUG    → Mở trang đăng ký...
+[2026-03-21 02:03:57] INFO     🚀 Bắt đầu Auto Register Tool
+[2026-03-21 02:03:57] INFO        Số tài khoản cần tạo: 5
+[2026-03-21 02:03:57] INFO        Headless: False
+[2026-03-21 02:03:57] INFO     
+[2026-03-21 02:03:58] INFO     [1/5] Tạo: Nam La | nam.la.fqzp@gmail.com
+[2026-03-21 02:03:58] DEBUG    → Mở trang đăng ký...
+[2026-03-21 02:04:05] DEBUG    → Click 'Tạo tài khoản'...
+[2026-03-21 02:04:23] DEBUG    → Điền tên: Nam La
+[2026-03-21 02:04:28] DEBUG    → Điền ngày sinh: 10/04/2003 | Giới tính: female
+[2026-03-21 02:04:41] DEBUG      Tìm thấy 0 <select> trên trang
+[2026-03-21 02:04:55] DEBUG      ✓ Tháng: chọn bằng custom dropdown '4'
+[2026-03-21 02:04:56] DEBUG      ✓ Ngày: điền bằng selector '#day'
+[2026-03-21 02:04:57] DEBUG      ✓ Năm: điền bằng selector '#year'
+[2026-03-21 02:04:58] DEBUG      Gender element '#gender' tag: div
+[2026-03-21 02:04:58] DEBUG      ✓ Giới tính: chọn 'Nữ' qua ##gender
+[2026-03-21 02:05:00] DEBUG    → Chọn username: nam.la.fqzp
+[2026-03-21 02:05:08] DEBUG    → Nhập mật khẩu: **************
+[2026-03-21 02:05:17] DEBUG    → Kiểm tra yêu cầu xác minh SĐT...
+[2026-03-21 02:05:33] DEBUG    → Không yêu cầu xác minh SĐT.
+[2026-03-21 02:05:33] DEBUG    → Đồng ý điều khoản...
+[2026-03-21 02:05:54] DEBUG    → Không tìm thấy nút đồng ý (có thể đã qua bước này).
+[2026-03-21 02:06:11] WARNING  [1] ⚠️ Không rõ kết quả đăng ký.
+[2026-03-21 02:06:11] DEBUG    Screenshot saved: screenshots\unclear_1_20260321_020611.png
+[2026-03-21 02:06:11] DEBUG    Chờ 6.4s trước khi retry...
+[2026-03-21 02:06:17] INFO     [1] 🔄 Retry lần 1/2...
+[2026-03-21 02:06:17] INFO     [1/5] Tạo: Duc Chau | duc.chau.gdx1@gmail.com
+[2026-03-21 02:06:17] DEBUG    → Mở trang đăng ký...
+[2026-03-21 02:06:23] DEBUG    → Click 'Tạo tài khoản'...
+[2026-03-21 02:06:41] DEBUG    → Điền tên: Duc Chau
+[2026-03-21 02:06:47] DEBUG    → Điền ngày sinh: 16/11/1998 | Giới tính: female
+[2026-03-21 02:07:00] DEBUG      Tìm thấy 0 <select> trên trang
+[2026-03-21 02:07:08] DEBUG      ✓ Tháng: chọn bằng custom dropdown 'Tháng 11'
+[2026-03-21 02:07:10] DEBUG      ✓ Ngày: điền bằng selector '#day'
+[2026-03-21 02:07:11] DEBUG      ✓ Năm: điền bằng selector '#year'
+[2026-03-21 02:07:12] DEBUG      Gender element '#gender' tag: div
+[2026-03-21 02:07:13] DEBUG      ✓ Giới tính: chọn 'Nữ' qua ##gender
+[2026-03-21 02:07:16] DEBUG    → Chọn username: duc.chau.gdx1
+[2026-03-21 02:07:37] DEBUG    → Nhập mật khẩu: **************
+[2026-03-21 02:07:45] DEBUG    → Kiểm tra yêu cầu xác minh SĐT...
+[2026-03-21 02:08:02] DEBUG    → Không yêu cầu xác minh SĐT.
+[2026-03-21 02:08:02] DEBUG    → Đồng ý điều khoản...
+[2026-03-21 02:08:23] DEBUG    → Không tìm thấy nút đồng ý (có thể đã qua bước này).
+[2026-03-21 02:08:39] WARNING  [1] ⚠️ Không rõ kết quả đăng ký.
+[2026-03-21 02:08:39] DEBUG    Screenshot saved: screenshots\unclear_1_20260321_020839.png
+[2026-03-21 02:08:39] DEBUG    Chờ 3.5s trước khi retry...
+[2026-03-21 02:08:43] INFO     [1] 🔄 Retry lần 2/2...
+[2026-03-21 02:08:43] INFO     [1/5] Tạo: Thu Hoang | thu.hoang.jh9i@gmail.com
+[2026-03-21 02:08:43] DEBUG    → Mở trang đăng ký...
+[2026-03-21 02:08:50] DEBUG    → Click 'Tạo tài khoản'...
+[2026-03-21 02:09:07] DEBUG    → Điền tên: Thu Hoang
+[2026-03-21 02:09:13] DEBUG    → Điền ngày sinh: 04/01/1999 | Giới tính: female
+[2026-03-21 02:09:27] DEBUG      Tìm thấy 0 <select> trên trang
+[2026-03-21 02:09:34] DEBUG      ✓ Tháng: chọn bằng custom dropdown 'Tháng 1'
+[2026-03-21 02:09:35] DEBUG      ✓ Ngày: điền bằng selector '#day'
+[2026-03-21 02:09:37] DEBUG      ✓ Năm: điền bằng selector '#year'
+[2026-03-21 02:09:38] DEBUG      Gender element '#gender' tag: div
+[2026-03-21 02:09:39] DEBUG      ✓ Giới tính: chọn 'Nữ' qua ##gender
+[2026-03-21 02:09:42] DEBUG    → Chọn username: thu.hoang.jh9i
+[2026-03-21 02:10:03] DEBUG    → Nhập mật khẩu: **************
+[2026-03-21 02:10:13] DEBUG    → Kiểm tra yêu cầu xác minh SĐT...
+[2026-03-21 02:10:29] DEBUG    → Không yêu cầu xác minh SĐT.
+[2026-03-21 02:10:29] DEBUG    → Đồng ý điều khoản...
+[2026-03-21 02:10:51] DEBUG    → Không tìm thấy nút đồng ý (có thể đã qua bước này).
+[2026-03-21 02:11:07] WARNING  [1] ⚠️ Không rõ kết quả đăng ký.
+[2026-03-21 02:11:07] DEBUG    Screenshot saved: screenshots\unclear_1_20260321_021107.png
+[2026-03-21 02:11:07] DEBUG    Chờ 3.8s trước tài khoản tiếp...
+[2026-03-21 02:11:11] INFO     [2/5] Tạo: Duc Luong | duc.luong.xili@gmail.com
+[2026-03-21 02:11:11] DEBUG    → Mở trang đăng ký...
+[2026-03-21 02:11:16] DEBUG    → Click 'Tạo tài khoản'...
+[2026-03-21 02:11:35] DEBUG    → Điền tên: Duc Luong
+[2026-03-21 02:11:41] DEBUG    → Điền ngày sinh: 01/04/1978 | Giới tính: male
+[2026-03-21 02:11:54] DEBUG      Tìm thấy 0 <select> trên trang
+[2026-03-21 02:12:07] DEBUG      ✓ Tháng: chọn bằng custom dropdown '4'
+[2026-03-21 02:12:08] DEBUG      ✓ Ngày: điền bằng selector '#day'
+[2026-03-21 02:12:09] DEBUG      ✓ Năm: điền bằng selector '#year'
+[2026-03-21 02:12:10] DEBUG      Gender element '#gender' tag: div
+[2026-03-21 02:12:11] DEBUG      ✓ Giới tính: chọn 'Nam' qua ##gender
+[2026-03-21 02:12:17] DEBUG    → Chọn username: duc.luong.xili
+[2026-03-21 02:12:38] DEBUG    → Nhập mật khẩu: **************
+[2026-03-21 02:12:48] DEBUG    → Kiểm tra yêu cầu xác minh SĐT...
+[2026-03-21 02:13:04] DEBUG    → Không yêu cầu xác minh SĐT.
+[2026-03-21 02:13:04] DEBUG    → Đồng ý điều khoản...
+[2026-03-21 02:13:25] DEBUG    → Không tìm thấy nút đồng ý (có thể đã qua bước này).
+[2026-03-21 02:13:41] WARNING  [2] ⚠️ Không rõ kết quả đăng ký.
+[2026-03-21 02:13:41] DEBUG    Screenshot saved: screenshots\unclear_2_20260321_021341.png
+[2026-03-21 02:13:42] DEBUG    Chờ 6.7s trước khi retry...
+[2026-03-21 02:13:48] INFO     [2] 🔄 Retry lần 1/2...
+[2026-03-21 02:13:48] INFO     [2/5] Tạo: Thao Dinh | thao.dinh.k8nb@gmail.com
+[2026-03-21 02:13:48] DEBUG    → Mở trang đăng ký...
+[2026-03-21 02:13:54] DEBUG    → Click 'Tạo tài khoản'...
+[2026-03-21 02:14:12] DEBUG    → Điền tên: Thao Dinh
+[2026-03-21 02:14:18] DEBUG    → Điền ngày sinh: 23/11/1996 | Giới tính: female
+[2026-03-21 02:14:31] DEBUG      Tìm thấy 0 <select> trên trang
+[2026-03-21 02:14:38] DEBUG      ✓ Tháng: chọn bằng custom dropdown 'Tháng 11'
+[2026-03-21 02:14:39] DEBUG      ✓ Ngày: điền bằng selector '#day'
+[2026-03-21 02:14:40] DEBUG      ✓ Năm: điền bằng selector '#year'
+[2026-03-21 02:14:41] DEBUG      Gender element '#gender' tag: div
+[2026-03-21 02:14:42] DEBUG      ✓ Giới tính: chọn 'Nữ' qua ##gender
+[2026-03-21 02:14:44] DEBUG    → Chọn username: thao.dinh.k8nb
+[2026-03-21 02:15:06] DEBUG    → Nhập mật khẩu: **************
+[2026-03-21 02:15:15] DEBUG    → Kiểm tra yêu cầu xác minh SĐT...
+[2026-03-21 02:15:31] DEBUG    → Không yêu cầu xác minh SĐT.
+[2026-03-21 02:15:31] DEBUG    → Đồng ý điều khoản...
+[2026-03-21 02:15:52] DEBUG    → Không tìm thấy nút đồng ý (có thể đã qua bước này).
+[2026-03-21 02:16:08] WARNING  [2] ⚠️ Không rõ kết quả đăng ký.
+[2026-03-21 02:16:09] DEBUG    Screenshot saved: screenshots\unclear_2_20260321_021608.png
+[2026-03-21 02:16:09] DEBUG    Chờ 6.2s trước khi retry...
+[2026-03-21 02:16:15] INFO     [2] 🔄 Retry lần 2/2...
+[2026-03-21 02:16:15] INFO     [2/5] Tạo: Thu Tran | thu.tran.xmdp@gmail.com
+[2026-03-21 02:16:15] DEBUG    → Mở trang đăng ký...
+[2026-03-21 02:16:17] ERROR    [2] ❌ Thất bại: Page.goto: net::ERR_ABORTED; maybe frame was detached?
+Call log:
+  - navigating to "https://accounts.google.com/signup", waiting until "networkidle"
+
+[2026-03-21 02:24:56] INFO     🚀 Bắt đầu Auto Register Tool
+[2026-03-21 02:24:56] INFO        Số tài khoản cần tạo: 5
+[2026-03-21 02:24:56] INFO        Headless: False
+[2026-03-21 02:24:56] INFO     
+[2026-03-21 02:24:57] INFO     [1/5] Tạo: Hoa La | hoa.la.aw4m@gmail.com
+[2026-03-21 02:24:57] DEBUG    → Mở trang đăng ký...
+[2026-03-21 02:25:07] DEBUG    → Click 'Tạo tài khoản'...
+[2026-03-21 02:25:24] DEBUG    → Điền tên: Hoa La
+[2026-03-21 02:25:31] DEBUG    → Điền ngày sinh: 02/05/1976 | Giới tính: male
+[2026-03-21 02:25:44] DEBUG      Tìm thấy 0 <select> trên trang
+[2026-03-21 02:25:52] DEBUG      ✓ Tháng: chọn bằng custom dropdown 'Tháng 5'
+[2026-03-21 02:25:53] DEBUG      ✓ Ngày: điền bằng selector '#day'
+[2026-03-21 02:25:54] DEBUG      ✓ Năm: điền bằng selector '#year'
+[2026-03-21 02:25:55] DEBUG      Gender element '#gender' tag: div
+[2026-03-21 02:25:56] DEBUG      ✓ Giới tính: chọn 'Nam' qua ##gender
+[2026-03-21 02:25:58] DEBUG    → Chọn username: hoa.la.aw4m
+[2026-03-21 02:26:06] DEBUG    → Nhập mật khẩu: **************
+[2026-03-21 02:26:16] DEBUG    → Kiểm tra yêu cầu xác minh SĐT...
+[2026-03-21 02:26:32] DEBUG    → Không yêu cầu xác minh SĐT.
+[2026-03-21 02:26:32] DEBUG    → Đồng ý điều khoản...
+[2026-03-21 02:31:45] INFO     🚀 Bắt đầu Auto Register Tool
+[2026-03-21 02:31:45] INFO        Số tài khoản cần tạo: 1
+[2026-03-21 02:31:45] INFO        Headless: False
+[2026-03-21 02:31:45] INFO        Chờ xác minh thủ công: True
+[2026-03-21 02:31:45] INFO        Browser profile: browser_profile
+[2026-03-21 02:31:45] INFO     
+[2026-03-21 02:31:46] INFO     [1/1] Tạo: Viet Luong | viet.luong.9prl@gmail.com
+[2026-03-21 02:31:46] DEBUG    → Mở trang đăng ký...
+[2026-03-21 02:31:58] DEBUG    → Click 'Tạo tài khoản'...
+[2026-03-21 02:32:19] DEBUG    → Điền tên: Viet Luong
+[2026-03-21 02:32:32] DEBUG    → Điền ngày sinh: 12/06/1979 | Giới tính: male
+[2026-03-21 02:32:45] DEBUG      Tìm thấy 0 <select> trên trang
+[2026-03-21 02:33:01] DEBUG      ✓ Tháng: chọn bằng custom dropdown '6'
+[2026-03-21 02:33:03] DEBUG      ✓ Ngày: điền bằng selector '#day'
+[2026-03-21 02:33:04] DEBUG      ✓ Năm: điền bằng selector '#year'
+[2026-03-21 02:33:06] DEBUG      Gender element '#gender' tag: div
+[2026-03-21 02:33:08] DEBUG      ✓ Giới tính: chọn 'Nam' qua ##gender
+[2026-03-21 02:33:12] DEBUG    → Kiểm tra yêu cầu xác minh...
+[2026-03-21 02:33:40] DEBUG    → Không yêu cầu xác minh ✓
+[2026-03-21 02:33:40] DEBUG    → Chọn username: viet.luong.9prl
+[2026-03-21 02:34:08] DEBUG    → Nhập mật khẩu: **************
+[2026-03-21 02:34:28] DEBUG    → Kiểm tra yêu cầu xác minh...
+[2026-03-21 02:34:30] WARNING  ⚠️ Phát hiện yêu cầu xác minh: text=Quét mã QR bằng điện thoại
+[2026-03-21 02:34:30] DEBUG    Screenshot saved: screenshots\verification_required_20260321_023430.png
+[2026-03-21 02:34:43] INFO     
+[2026-03-21 02:34:43] INFO     =======================================================
+[2026-03-21 02:34:43] INFO     📱  CẦN XÁC MINH THỦ CÔNG
+[2026-03-21 02:34:43] INFO     =======================================================
+[2026-03-21 02:34:43] INFO       Google yêu cầu xác minh trước khi tạo tài khoản.
+[2026-03-21 02:34:43] INFO       Hãy thực hiện xác minh trên cửa sổ trình duyệt:
+[2026-03-21 02:34:43] INFO         • Quét mã QR bằng điện thoại, HOẶC
+[2026-03-21 02:34:43] INFO         • Nhập số điện thoại + mã OTP, HOẶC
+[2026-03-21 02:34:43] INFO         • Giải CAPTCHA
+[2026-03-21 02:34:43] INFO     
+[2026-03-21 02:34:43] INFO       ⏳ Script sẽ chờ tối đa 300s...
+[2026-03-21 02:34:43] INFO       ✅ Sau khi xác minh xong, script sẽ tự động tiếp tục!
+[2026-03-21 02:34:43] INFO     =======================================================
+[2026-03-21 02:34:43] INFO     
+[2026-03-21 02:35:13] INFO       ⏳ Đã chờ 30s / 300s...
+[2026-03-21 02:35:43] INFO       ⏳ Đã chờ 60s / 300s...
+[2026-03-21 02:36:14] INFO       ⏳ Đã chờ 90s / 300s...
+[2026-03-21 02:38:13] INFO       ⏳ Đã chờ 210s / 300s...
+[2026-03-21 02:38:43] INFO       ⏳ Đã chờ 240s / 300s...
+[2026-03-21 02:39:13] INFO       ⏳ Đã chờ 270s / 300s...
+[2026-03-21 02:39:44] ERROR    [1] ❌ Thất bại: Hết thời gian chờ xác minh (300s). Hãy tăng verification_timeout hoặc xác minh nhanh hơn.
