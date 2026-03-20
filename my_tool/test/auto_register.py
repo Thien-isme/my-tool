@@ -17,6 +17,7 @@ Cách dùng:
 import csv
 import json
 import logging
+import math
 import os
 import random
 import string
@@ -289,20 +290,92 @@ class AutoRegister:
         """Trả về delay (ms) khi gõ từng ký tự."""
         return random.randint(*self.config.typing_delay)
 
+    def _human_mouse_move(self, page: Page, target_x: int, target_y: int):
+        """Di chuột theo đường cong Bézier tự nhiên như người thật.
+        
+        reCAPTCHA v3 theo dõi chuyển động chuột rất kỹ.
+        Bot di chuột thẳng, người thật di chuột theo đường cong.
+        """
+        # Lấy vị trí chuột hiện tại (hoặc random góc màn hình)
+        viewport = page.viewport_size or {"width": 1920, "height": 1080}
+        start_x = random.randint(100, viewport["width"] - 100)
+        start_y = random.randint(100, viewport["height"] - 100)
+
+        # Tạo 2 điểm kiểm soát Bézier (tạo đường cong)
+        ctrl1_x = start_x + random.randint(-100, 100)
+        ctrl1_y = start_y + random.randint(-50, 50)
+        ctrl2_x = target_x + random.randint(-100, 100)
+        ctrl2_y = target_y + random.randint(-50, 50)
+
+        # Số bước di chuyển
+        steps = random.randint(15, 30)
+
+        for i in range(steps + 1):
+            t = i / steps
+            # Công thức Bézier bậc 3
+            x = (1-t)**3 * start_x + 3*(1-t)**2 * t * ctrl1_x + 3*(1-t) * t**2 * ctrl2_x + t**3 * target_x
+            y = (1-t)**3 * start_y + 3*(1-t)**2 * t * ctrl1_y + 3*(1-t) * t**2 * ctrl2_y + t**3 * target_y
+
+            # Thêm nhiễu nhỏ ngẫu nhiên
+            x += random.uniform(-2, 2)
+            y += random.uniform(-2, 2)
+
+            page.mouse.move(int(x), int(y))
+            time.sleep(random.uniform(0.005, 0.025))
+
+    def _random_mouse_jitter(self, page: Page):
+        """Di chuột ngẫu nhiên trên trang (giả lập người đang đọc)."""
+        viewport = page.viewport_size or {"width": 1920, "height": 1080}
+        for _ in range(random.randint(2, 5)):
+            x = random.randint(200, viewport["width"] - 200)
+            y = random.randint(200, viewport["height"] - 200)
+            page.mouse.move(x, y)
+            time.sleep(random.uniform(0.1, 0.4))
+
+    def _random_scroll(self, page: Page):
+        """Scroll trang ngẫu nhiên như người đọc."""
+        scroll_amount = random.randint(100, 400)
+        page.mouse.wheel(0, scroll_amount)
+        time.sleep(random.uniform(0.3, 1.0))
+
     def _human_type(self, page: Page, selector: str, text: str):
-        """Gõ chữ từng ký tự với tốc độ ngẫu nhiên như người thật."""
-        page.click(selector)
-        self._human_delay()
-        for char in text:
+        """Gõ chữ từng ký tự giống người thật: tốc độ không đều, đôi khi dừng lại."""
+        element = page.wait_for_selector(selector, timeout=5000)
+        if element:
+            # Di chuột tới element trước khi click
+            box = element.bounding_box()
+            if box:
+                target_x = int(box["x"] + box["width"] / 2 + random.randint(-5, 5))
+                target_y = int(box["y"] + box["height"] / 2 + random.randint(-3, 3))
+                self._human_mouse_move(page, target_x, target_y)
+            element.click()
+        else:
+            page.click(selector)
+
+        time.sleep(random.uniform(0.3, 0.8))  # Nghỉ trước khi gõ
+
+        for i, char in enumerate(text):
             page.keyboard.type(char, delay=self._random_typing_delay())
+            # Đôi khi dừng lâu hơn (giống như suy nghĩ)
+            if random.random() < 0.1:
+                time.sleep(random.uniform(0.3, 0.8))
 
     def _safe_click(self, page: Page, selector: str, timeout: Optional[int] = None):
-        """Click an toàn: chờ element → di chuột tới → click."""
+        """Click an toàn: chờ element → di chuột tự nhiên → click."""
         timeout = timeout or self.config.element_timeout
         element = page.wait_for_selector(selector, timeout=timeout)
         if element:
             element.scroll_into_view_if_needed()
-            self._human_delay()
+            time.sleep(random.uniform(0.2, 0.5))
+
+            # Di chuột tới element theo đường cong tự nhiên
+            box = element.bounding_box()
+            if box:
+                target_x = int(box["x"] + box["width"] / 2 + random.randint(-3, 3))
+                target_y = int(box["y"] + box["height"] / 2 + random.randint(-2, 2))
+                self._human_mouse_move(page, target_x, target_y)
+
+            time.sleep(random.uniform(0.1, 0.3))
             element.click()
 
     def _screenshot(self, page: Page, name: str):
@@ -493,6 +566,11 @@ class AutoRegister:
         """Bước 1: Mở trang đăng ký."""
         self.logger.debug("→ Mở trang đăng ký...")
         page.goto(self.config.signup_url, wait_until="networkidle")
+        self._human_delay()
+
+        # Di chuột ngẫu nhiên trên trang để reCAPTCHA v3 thấy hoạt động tự nhiên
+        self._random_mouse_jitter(page)
+        self._random_scroll(page)
         self._human_delay()
 
     def _step_select_personal(self, page: Page):
@@ -1358,20 +1436,87 @@ class AutoRegister:
                 ignore_https_errors=True,
             )
 
-            # Thêm stealth scripts
+            # Thêm stealth scripts TOÀN DIỆN
             context.add_init_script("""
+                // 1. Ẩn navigator.webdriver
                 Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+                delete navigator.__proto__.webdriver;
+
+                // 2. Giả lập plugins
                 Object.defineProperty(navigator, 'plugins', {
-                    get: () => [
-                        { name: 'Chrome PDF Plugin', filename: 'internal-pdf-viewer' },
-                        { name: 'Chrome PDF Viewer', filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai' },
-                        { name: 'Native Client', filename: 'internal-nacl-plugin' },
-                    ],
+                    get: () => {
+                        const plugins = [
+                            { name: 'Chrome PDF Plugin', filename: 'internal-pdf-viewer', description: 'Portable Document Format' },
+                            { name: 'Chrome PDF Viewer', filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai', description: '' },
+                            { name: 'Native Client', filename: 'internal-nacl-plugin', description: '' },
+                        ];
+                        plugins.length = 3;
+                        return plugins;
+                    },
                 });
+
+                // 3. Languages
                 Object.defineProperty(navigator, 'languages', {
                     get: () => ['vi-VN', 'vi', 'en-US', 'en'],
                 });
-                window.chrome = { runtime: {}, loadTimes: function(){}, csi: function(){}, app: {} };
+
+                // 4. Chrome runtime
+                window.chrome = {
+                    runtime: { onConnect: {}, onMessage: {}, sendMessage: function(){} },
+                    loadTimes: function() { return { commitLoadTime: Date.now() / 1000 }; },
+                    csi: function() { return { startE: Date.now(), onloadT: Date.now() }; },
+                    app: { isInstalled: false, InstallState: { INSTALLED: 'installed' } },
+                };
+
+                // 5. Hardware fingerprint
+                Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 8 });
+                Object.defineProperty(navigator, 'deviceMemory', { get: () => 8 });
+                Object.defineProperty(navigator, 'maxTouchPoints', { get: () => 0 });
+                Object.defineProperty(navigator, 'platform', { get: () => 'Win32' });
+
+                // 6. Connection API
+                if (navigator.connection) {
+                    Object.defineProperty(navigator.connection, 'rtt', { get: () => 50 });
+                    Object.defineProperty(navigator.connection, 'downlink', { get: () => 10 });
+                    Object.defineProperty(navigator.connection, 'effectiveType', { get: () => '4g' });
+                }
+
+                // 7. Permissions API (chặn detection qua query)
+                const origQuery = window.navigator.permissions.query;
+                window.navigator.permissions.query = (parameters) => {
+                    if (parameters.name === 'notifications') {
+                        return Promise.resolve({ state: Notification.permission });
+                    }
+                    return origQuery(parameters);
+                };
+
+                // 8. WebGL Renderer (ẩn dấu hiệu headless)
+                const getParameter = WebGLRenderingContext.prototype.getParameter;
+                WebGLRenderingContext.prototype.getParameter = function(parameter) {
+                    if (parameter === 37445) return 'Intel Inc.';
+                    if (parameter === 37446) return 'Intel Iris OpenGL Engine';
+                    return getParameter.call(this, parameter);
+                };
+
+                // 9. Canvas fingerprint (thêm nhiễu nhỏ)
+                const origToDataURL = HTMLCanvasElement.prototype.toDataURL;
+                HTMLCanvasElement.prototype.toDataURL = function(type) {
+                    if (this.width === 0 && this.height === 0) {
+                        return origToDataURL.apply(this, arguments);
+                    }
+                    const ctx = this.getContext('2d');
+                    if (ctx) {
+                        const style = ctx.fillStyle;
+                        ctx.fillStyle = 'rgba(0,0,1,0.003)';
+                        ctx.fillRect(0, 0, 1, 1);
+                        ctx.fillStyle = style;
+                    }
+                    return origToDataURL.apply(this, arguments);
+                };
+
+                // 10. Ẩn Playwright từ window
+                delete window.__playwright;
+                delete window.__pw_manual;
             """)
 
             # Làm ấm browser profile nếu chưa từng làm
