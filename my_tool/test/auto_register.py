@@ -1339,6 +1339,7 @@ class AutoRegister:
             context = p.chromium.launch_persistent_context(
                 user_data_dir=self.config.user_data_dir,
                 headless=self.config.headless,
+                channel="chrome",  # ← DÙNG CHROME THẬT thay vì Chromium!
                 viewport=viewport,
                 user_agent=user_agent,
                 locale="vi-VN",
@@ -1350,6 +1351,9 @@ class AutoRegister:
                     "--disable-dev-shm-usage",
                     "--disable-infobars",
                     "--disable-extensions",
+                    "--disable-automation",
+                    "--exclude-switches=enable-automation",
+                    "--disable-component-extensions-with-background-pages",
                 ],
                 ignore_https_errors=True,
             )
@@ -1432,6 +1436,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Auto Register Google Account")
     parser.add_argument("--warmup", action="store_true",
                         help="Chỉ làm ấm browser profile (không tạo tài khoản)")
+    parser.add_argument("--reset", action="store_true",
+                        help="Xóa browser profile cũ và bắt đầu mới")
     parser.add_argument("--accounts", type=int, default=1,
                         help="Số tài khoản cần tạo (mặc định: 1)")
     parser.add_argument("--proxy", type=str, default="",
@@ -1452,17 +1458,30 @@ if __name__ == "__main__":
         proxy_password=args.proxy_pass,
     )
 
+    # Xóa profile cũ nếu --reset
+    if args.reset:
+        import shutil
+        if os.path.exists(config.user_data_dir):
+            shutil.rmtree(config.user_data_dir)
+            print(f"🗑️  Đã xóa browser profile cũ: {config.user_data_dir}")
+        if os.path.exists(config.screenshot_dir):
+            shutil.rmtree(config.screenshot_dir)
+        print("✅ Reset xong! Profile mới sẽ được tạo khi chạy.\n")
+
     tool = AutoRegister(config)
 
     if args.warmup:
         # Chỉ làm ấm, không tạo tài khoản
-        from playwright.sync_api import sync_playwright as sp
         Path(config.user_data_dir).mkdir(parents=True, exist_ok=True)
-        with sp() as p:
+        with sync_playwright() as p:
             ctx = p.chromium.launch_persistent_context(
                 user_data_dir=config.user_data_dir,
                 headless=False,
-                args=["--disable-blink-features=AutomationControlled"],
+                channel="chrome",
+                args=[
+                    "--disable-blink-features=AutomationControlled",
+                    "--disable-automation",
+                ],
             )
             tool.warmup_browser(ctx)
             ctx.close()
