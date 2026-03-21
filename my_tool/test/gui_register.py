@@ -130,6 +130,8 @@ class GoogleAccountCreatorApp(ctk.CTk):
 
         self.proxy_host = ctk.CTkEntry(row1, placeholder_text="Host (vd: proxy.example.com)")
         self.proxy_host.grid(row=0, column=0, padx=(0, 5), sticky="ew")
+        # Tự động tách proxy khi dán
+        self.proxy_host.bind("<KeyRelease>", self._on_proxy_host_change)
 
         self.proxy_port = ctk.CTkEntry(row1, placeholder_text="Port", width=80)
         self.proxy_port.grid(row=0, column=1, sticky="ew")
@@ -144,6 +146,12 @@ class GoogleAccountCreatorApp(ctk.CTk):
 
         self.proxy_pass = ctk.CTkEntry(row2, placeholder_text="Password", show="•")
         self.proxy_pass.grid(row=0, column=1, sticky="ew")
+
+        # Điền mặc định Proxy Vinh của bạn nhé!
+        self.proxy_host.insert(0, "res-v2.pr.plainproxies.com")
+        self.proxy_port.insert(0, "8080")
+        self.proxy_user.insert(0, "tran_tJfIGm-country-vn-state-22-city-vinh")
+        self.proxy_pass.insert(0, "zku49GQUCM9ILxQ")
 
         # Separator
         ctk.CTkLabel(proxy_card, text="── hoặc tải từ file ──",
@@ -373,6 +381,22 @@ class GoogleAccountCreatorApp(ctk.CTk):
 
     # ============ XỬ LÝ SỰ KIỆN ============
 
+    def _on_proxy_host_change(self, event):
+        """Tự động tách proxy nếu người dùng dán định dạng HOST:PORT:USER:PASS"""
+        content = self.proxy_host.get().strip()
+        if content.count(':') >= 1:
+            parts = content.split(':')
+            if len(parts) >= 2:
+                self.proxy_host.delete(0, "end")
+                self.proxy_host.insert(0, parts[0])
+                self.proxy_port.delete(0, "end")
+                self.proxy_port.insert(0, parts[1])
+            if len(parts) >= 4:
+                self.proxy_user.delete(0, "end")
+                self.proxy_user.insert(0, parts[2])
+                self.proxy_pass.delete(0, "end")
+                self.proxy_pass.insert(0, parts[3])
+
     def _browse_proxy_file(self):
         """Chọn file proxy"""
         file_path = filedialog.askopenfilename(
@@ -391,23 +415,27 @@ class GoogleAccountCreatorApp(ctk.CTk):
 
     def _get_proxy_config(self, index=0):
         """Lấy cấu hình proxy (single hoặc từ list)"""
-        # Ưu tiên proxy list từ file
         if self.proxy_list:
             proxy = self.proxy_list[index % len(self.proxy_list)]
             return proxy
 
-        # Nếu không, dùng proxy nhập tay
         host = self.proxy_host.get().strip()
         port = self.proxy_port.get().strip()
         if host and port:
-            proxy = {"server": f"http://{host}:{port}"}
+            # Tự động thêm protocol nếu chưa có
+            if "://" not in host:
+                server = f"http://{host}:{port}"
+            else:
+                # Nếu đã có protocol (vd: socks5://host) thì ghép với port
+                server = f"{host}:{port}"
+                
+            proxy = {"server": server}
             user = self.proxy_user.get().strip()
             passwd = self.proxy_pass.get().strip()
             if user and passwd:
                 proxy["username"] = user
                 proxy["password"] = passwd
             return proxy
-
         return None
 
     def _test_proxy(self):

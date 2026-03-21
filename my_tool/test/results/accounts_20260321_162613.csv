@@ -1,0 +1,5 @@
+﻿email,password,first_name,last_name,status,detail
+shanedavis81260@gmail.com,nbk05dDC#P!VXJ,Shane,Davis,error,"Page.goto: net::ERR_TUNNEL_CONNECTION_FAILED at https://accounts.google.com/signup?hl=en
+Call log:
+  - navigating to ""https://accounts.google.com/signup?hl=en"", waiting until ""domcontentloaded""
+"

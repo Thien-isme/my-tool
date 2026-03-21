@@ -250,7 +250,16 @@ class GoogleRegisterBot:
 
         # ============ BƯỚC 1: Truy cập trang đăng ký ============
         self.log("📄 Đang truy cập trang đăng ký Google...")
-        page.goto(self.SIGNUP_URL, wait_until="domcontentloaded", timeout=120000)
+        # Sử dụng wait_until="commit" để qua màn nhanh hơn khi dùng proxy chậm
+        page.goto(self.SIGNUP_URL, wait_until="commit", timeout=180000)
+        
+        # Đợi một phần tử cơ bản xuất hiện thay vì đợi cả trang
+        try:
+            page.wait_for_selector('#firstName', timeout=60000)
+        except:
+            # Nếu commit xong mà vẫn không thấy, đợi thêm chút
+            page.wait_for_load_state("domcontentloaded", timeout=30000)
+            
         self.random_sleep(1.5, 3)
         self.take_screenshot(page, "01_signup_page")
 
@@ -291,8 +300,34 @@ class GoogleRegisterBot:
             self.log(f"⚠️ Trang không đúng kỳ vọng. URL: {current_url}")
             return {**result_base, 'status': 'error', 'detail': f'Unexpected page after name. URL: {current_url}'}
 
-        # Chọn tháng
-        page.select_option('#month', value=info['birth_month'])
+        # Chọn tháng (Google có thể dùng <select> hoặc custom <div> dropdown)
+        month_value = info['birth_month']
+        try:
+            month_el = page.locator('#month')
+            # Kiểm tra xem có phải là <select> không
+            is_select = page.evaluate("el => el.tagName === 'SELECT'", month_el.element_handle())
+            
+            if is_select:
+                page.select_option('#month', value=str(month_value))
+            else:
+                # Nếu là custom div, click để mở menu sau đó chọn
+                month_el.click()
+                self.random_sleep(0.5, 1)
+                # Google dùng aria-owns hoặc các option bên trong
+                # Cách an toàn nhất là click vào option có data-value tương ứng hoặc text
+                # Tháng 1=1, 2=2...
+                page.locator(f'div[role="option"][data-value="{month_value}"]').hide_before_unpack = True # just a note
+                page.click(f'div[role="option"][data-value="{month_value}"]')
+            
+            self.log(f"✅ Đã chọn tháng: {month_value}")
+        except Exception as e:
+            self.log(f"⚠️ Lỗi chọn tháng: {e}. Thử click thủ công...")
+            try:
+                page.click('#month')
+                self.random_sleep(0.5, 1)
+                page.click(f'//div[@role="option"]//span[contains(text(), "")]') # fallback
+            except: pass
+
         self.random_sleep(0.3, 0.6)
 
         # Điền ngày
@@ -303,7 +338,20 @@ class GoogleRegisterBot:
 
         # Chọn giới tính
         self.random_sleep(0.3, 0.6)
-        page.select_option('#gender', value=str(info['gender']))
+        try:
+            gender_el = page.locator('#gender')
+            is_select_gender = page.evaluate("el => el.tagName === 'SELECT'", gender_el.element_handle())
+            if is_select_gender:
+                page.select_option('#gender', value=str(info['gender']))
+            else:
+                gender_el.click()
+                self.random_sleep(0.5, 1)
+                page.click(f'div[role="option"][data-value="{info["gender"]}"]')
+        except Exception:
+            # Fallback nếu không chọn được bằng code trên
+            try:
+                page.select_option('#gender', value=str(info['gender']))
+            except: pass
 
         self.take_screenshot(page, "03_birthday_filled")
         self.random_sleep(0.5, 1)

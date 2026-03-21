@@ -1,0 +1,16 @@
+﻿email,password,first_name,last_name,status,detail
+shanedavis81260@gmail.com,nbk05dDC#P!VXJ,Shane,Davis,error,"Page.goto: net::ERR_TUNNEL_CONNECTION_FAILED at https://accounts.google.com/signup?hl=en
+Call log:
+  - navigating to ""https://accounts.google.com/signup?hl=en"", waiting until ""domcontentloaded""
+"
+elizabethgross15756@gmail.com,tG3z9$bLCgrY*6,Elizabeth,Gross,error,"Page.select_option: Error: Element is not a <select> element
+Call log:
+  - waiting for locator(""#month"")
+    - locator resolved to <div id=""month"" jsshadow="""" jsname=""O1htCb"" jscontroller=""yRXbo"" class=""O1htCb-H9tDt kqZXwe"" jsaction=""iFFCZc:Y0y4c;Rld2oe:gDkf4c;EDR5Je:QdOKJc;FzgWvd:RFVo1b"">…</div>
+  - attempting select option action
+    - waiting for element to be visible and enabled
+"
+josephdelgado17784@gmail.com,zKfN&w8VS076lo,Joseph,Delgado,error,"Page.goto: net::ERR_TUNNEL_CONNECTION_FAILED at https://accounts.google.com/signup?hl=en
+Call log:
+  - navigating to ""https://accounts.google.com/signup?hl=en"", waiting until ""domcontentloaded""
+"
