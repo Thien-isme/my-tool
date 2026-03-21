@@ -1,0 +1,5 @@
+﻿email,password,first_name,last_name,status,detail
+kennethcox58981@gmail.com,0mAD6LxHCc48&d,Kenneth,Cox,error,"Page.goto: Timeout 30000ms exceeded.
+Call log:
+  - navigating to ""https://accounts.google.com/signup?hl=en"", waiting until ""networkidle""
+"

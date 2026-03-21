@@ -1,0 +1,5 @@
+﻿email,password,first_name,last_name,status,detail
+denisecarroll30366@gmail.com,49MNx&p3Ce5aGT,Denise,Carroll,error,"Page.goto: Timeout 60000ms exceeded.
+Call log:
+  - navigating to ""https://accounts.google.com/signup?hl=en"", waiting until ""domcontentloaded""
+"

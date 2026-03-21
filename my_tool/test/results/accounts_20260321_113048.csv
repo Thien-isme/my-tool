@@ -1,0 +1,5 @@
+﻿email,password,first_name,last_name,status,detail
+jameserickson1058@gmail.com,@Hmg&X4jp%y*Pr,James,Erickson,error,"Page.goto: Timeout 120000ms exceeded.
+Call log:
+  - navigating to ""https://accounts.google.com/signup?hl=en"", waiting until ""domcontentloaded""
+"

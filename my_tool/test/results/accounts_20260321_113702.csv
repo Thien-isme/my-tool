@@ -1,0 +1,5 @@
+﻿email,password,first_name,last_name,status,detail
+randylee36783@gmail.com,NCoMA@HiMRB!3o,Randy,Lee,error,"Page.goto: net::ERR_ABORTED at https://accounts.google.com/signup?hl=en
+Call log:
+  - navigating to ""https://accounts.google.com/signup?hl=en"", waiting until ""domcontentloaded""
+"

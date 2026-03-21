@@ -1,0 +1,16 @@
+﻿email,password,first_name,last_name,status,detail
+davidsanders93522@gmail.com,U%qhKkk1r88$GA,David,Sanders,error,"Page.click: Target page, context or browser has been closed"
+ralphpeters20373@gmail.com,ZvZ2%3$n#ypzHH,Ralph,Peters,error,"Page.select_option: Error: Element is not a <select> element
+Call log:
+  - waiting for locator(""#month"")
+    - locator resolved to <div id=""month"" jsshadow="""" jsname=""O1htCb"" jscontroller=""yRXbo"" class=""O1htCb-H9tDt kqZXwe"" jsaction=""iFFCZc:Y0y4c;Rld2oe:gDkf4c;EDR5Je:QdOKJc;FzgWvd:RFVo1b"">…</div>
+  - attempting select option action
+    - waiting for element to be visible and enabled
+"
+jacquelinelane63366@gmail.com,3CrMk!hUM4VyiD,Jacqueline,Lane,error,"Page.select_option: Error: Element is not a <select> element
+Call log:
+  - waiting for locator(""#month"")
+    - locator resolved to <div id=""month"" jsshadow="""" jsname=""O1htCb"" jscontroller=""yRXbo"" class=""O1htCb-H9tDt kqZXwe"" jsaction=""iFFCZc:Y0y4c;Rld2oe:gDkf4c;EDR5Je:QdOKJc;FzgWvd:RFVo1b"">…</div>
+  - attempting select option action
+    - waiting for element to be visible and enabled
+"

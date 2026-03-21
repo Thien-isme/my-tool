@@ -1,569 +1,810 @@
 """
-Tool Reg Gmail - GUI Version
-==============================
-Giao diện đồ họa để tạo tài khoản Gmail tự động.
-
-Cách dùng:
-  pip install playwright
-  playwright install chromium
-  python gui_register.py
+Google Account Creator Tool - GUI Application
+Giao diện đồ họa để tự động đăng ký tài khoản Google
+Sử dụng CustomTkinter cho giao diện hiện đại
 """
-
-import tkinter as tk
-from tkinter import ttk, scrolledtext, messagebox, filedialog
+import customtkinter as ctk
 import threading
-import requests
-import time
+import queue
+import csv
 import os
-import random
-from pathlib import Path
+import json
+from datetime import datetime
+from tkinter import filedialog, messagebox
 
-# Import từ script chính
-from auto_register import (
-    Config, AutoRegister, generate_account_info, setup_logger
-)
-
-
-class ProxyChecker:
-    """Kiểm tra proxy có hoạt động không."""
-
-    @staticmethod
-    def check_single(proxy_url: str, timeout: int = 10) -> bool:
-        """Kiểm tra 1 proxy."""
-        try:
-            proxies = {"http": proxy_url, "https": proxy_url}
-            resp = requests.get(
-                "https://httpbin.org/ip",
-                proxies=proxies,
-                timeout=timeout,
-            )
-            return resp.status_code == 200
-        except Exception:
-            return False
-
-    @staticmethod
-    def parse_proxy_line(line: str) -> dict:
-        """Parse dòng proxy thành dict config cho Playwright.
-
-        Hỗ trợ format:
-          - http://host:port
-          - http://user:pass@host:port
-          - host:port (mặc định http)
-        """
-        line = line.strip()
-        if not line or line.startswith("#"):
-            return None
-
-        # Thêm http:// nếu chưa có
-        if not line.startswith("http://") and not line.startswith("socks"):
-            line = f"http://{line}"
-
-        # Parse username:password nếu có
-        result = {"server": line}
-
-        if "@" in line:
-            # http://user:pass@host:port
-            protocol = line.split("://")[0]
-            rest = line.split("://")[1]
-            auth, hostport = rest.rsplit("@", 1)
-            if ":" in auth:
-                user, passwd = auth.split(":", 1)
-                result["server"] = f"{protocol}://{hostport}"
-                result["username"] = user
-                result["password"] = passwd
-
-        return result
+from data_generator import generate_account_info, parse_proxy_string, load_proxies_from_file
+from register_bot import GoogleRegisterBot
 
 
-class ToolRegGmail(tk.Tk):
-    """Giao diện chính của Tool Reg Gmail."""
+# ============ CẤU HÌNH GIAO DIỆN ============
+ctk.set_appearance_mode("dark")
+ctk.set_default_color_theme("blue")
+
+# Màu sắc
+COLORS = {
+    'google_blue': '#4285F4',
+    'google_red': '#EA4335',
+    'google_yellow': '#FBBC05',
+    'google_green': '#34A853',
+    'success': '#2ecc71',
+    'warning': '#f39c12',
+    'error': '#e74c3c',
+    'info': '#3498db',
+    'bg_card': '#1e1e2e',
+    'bg_dark': '#11111b',
+    'text_dim': '#6c7086',
+}
+
+RESULT_DIR = os.path.join(os.path.dirname(__file__), "results")
+os.makedirs(RESULT_DIR, exist_ok=True)
+
+
+class GoogleAccountCreatorApp(ctk.CTk):
+    """Ứng dụng GUI tạo tài khoản Google tự động"""
 
     def __init__(self):
         super().__init__()
 
-        self.title("Tool Reg Gmail")
-        self.geometry("750x680")
-        self.resizable(True, True)
-        self.configure(bg="#f0f0f0")
+        # Cấu hình cửa sổ
+        self.title("🔐 Google Account Creator Tool")
+        self.geometry("1050x780")
+        self.minsize(950, 700)
 
         # State
-        self.proxy_list = []
-        self.proxy_status = {}  # proxy -> "active" / "dead"
-        self.proxy_index = 0
+        self.log_queue = queue.Queue()
+        self.results = []
         self.is_running = False
-        self.worker_thread = None
+        self.bot_thread = None
+        self.bot = None
+        self.proxy_list = []
 
-        self._build_ui()
+        # Tạo giao diện
+        self._create_header()
+        self._create_settings_panel()
+        self._create_control_panel()
+        self._create_log_panel()
+        self._create_results_panel()
 
-    def _build_ui(self):
-        """Xây dựng giao diện."""
-        # Title
-        title = tk.Label(
-            self, text="Tool Reg Gmail",
-            font=("Segoe UI", 18, "bold"), bg="#f0f0f0", fg="#333"
+        # Cấu hình grid
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(3, weight=1)  # Log panel mở rộng
+        self.grid_rowconfigure(4, weight=1)  # Results panel mở rộng
+
+        # Bắt đầu polling log queue
+        self._poll_log_queue()
+
+        # Xử lý đóng cửa sổ
+        self.protocol("WM_DELETE_WINDOW", self._on_close)
+
+    # ============ TẠO GIAO DIỆN ============
+
+    def _create_header(self):
+        """Tạo header với tiêu đề và logo"""
+        header = ctk.CTkFrame(self, fg_color="transparent", height=60)
+        header.grid(row=0, column=0, padx=20, pady=(15, 5), sticky="ew")
+
+        # Tiêu đề
+        title_label = ctk.CTkLabel(
+            header,
+            text="🔐  Google Account Creator",
+            font=ctk.CTkFont(family="Segoe UI", size=26, weight="bold"),
+            text_color=COLORS['google_blue']
         )
-        title.pack(pady=(10, 5))
+        title_label.pack(side="left")
 
-        # Tabs
-        self.notebook = ttk.Notebook(self)
-        self.notebook.pack(fill="both", expand=True, padx=10, pady=5)
-
-        # Tab 1: Tạo tài khoản
-        self.tab_create = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_create, text="  Tạo Tài Khoản  ")
-
-        # Tab 2: Cấu hình Proxy
-        self.tab_proxy = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_proxy, text="  Cấu Hình Proxy  ")
-
-        # Tab 3: Kết quả
-        self.tab_results = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_results, text="  Kết Quả  ")
-
-        self._build_create_tab()
-        self._build_proxy_tab()
-        self._build_results_tab()
-
-    # ==================== TAB TẠO TÀI KHOẢN ====================
-
-    def _build_create_tab(self):
-        tab = self.tab_create
-
-        # --- Cấu hình ---
-        config_frame = ttk.LabelFrame(tab, text="Cấu Hình", padding=10)
-        config_frame.pack(fill="x", padx=10, pady=5)
-
-        # Số tài khoản
-        row1 = ttk.Frame(config_frame)
-        row1.pack(fill="x", pady=3)
-        ttk.Label(row1, text="Số tài khoản:").pack(side="left")
-        self.var_num_accounts = tk.StringVar(value="1")
-        ttk.Entry(row1, textvariable=self.var_num_accounts, width=8).pack(side="left", padx=5)
-
-        # Timeout xác minh
-        ttk.Label(row1, text="   Timeout xác minh (giây):").pack(side="left")
-        self.var_timeout = tk.StringVar(value="300")
-        ttk.Entry(row1, textvariable=self.var_timeout, width=8).pack(side="left", padx=5)
-
-        # Chế độ
-        row2 = ttk.Frame(config_frame)
-        row2.pack(fill="x", pady=3)
-
-        self.var_use_proxy = tk.BooleanVar(value=False)
-        ttk.Checkbutton(row2, text="Sử Dụng Proxy", variable=self.var_use_proxy).pack(side="left")
-
-        self.var_rotate_proxy = tk.BooleanVar(value=True)
-        ttk.Checkbutton(row2, text="Xoay Proxy Tự Động (mỗi tài khoản dùng 1 proxy)", variable=self.var_rotate_proxy).pack(side="left", padx=15)
-
-        row3 = ttk.Frame(config_frame)
-        row3.pack(fill="x", pady=3)
-
-        self.var_warmup = tk.BooleanVar(value=True)
-        ttk.Checkbutton(row3, text="Làm ấm browser trước khi tạo", variable=self.var_warmup).pack(side="left")
-
-        self.var_wait_verify = tk.BooleanVar(value=True)
-        ttk.Checkbutton(row3, text="Chờ xác minh thủ công (QR/SMS)", variable=self.var_wait_verify).pack(side="left", padx=15)
-
-        # Buttons
-        btn_frame = ttk.Frame(config_frame)
-        btn_frame.pack(fill="x", pady=5)
-
-        self.btn_start = ttk.Button(btn_frame, text="▶  BẮT ĐẦU TẠO", command=self._start_create)
-        self.btn_start.pack(side="left", padx=5)
-
-        self.btn_stop = ttk.Button(btn_frame, text="⏹  DỪNG", command=self._stop_create, state="disabled")
-        self.btn_stop.pack(side="left", padx=5)
-
-        ttk.Button(btn_frame, text="🔄 Reset Profile", command=self._reset_profile).pack(side="left", padx=5)
-
-        # --- Log ---
-        log_frame = ttk.LabelFrame(tab, text="Log", padding=5)
-        log_frame.pack(fill="both", expand=True, padx=10, pady=5)
-
-        self.log_text = scrolledtext.ScrolledText(
-            log_frame, height=15, font=("Consolas", 9),
-            bg="#1e1e1e", fg="#d4d4d4", insertbackground="white",
+        # Trạng thái
+        self.status_label = ctk.CTkLabel(
+            header,
+            text="⏸ Sẵn sàng",
+            font=ctk.CTkFont(size=14),
+            text_color=COLORS['text_dim']
         )
-        self.log_text.pack(fill="both", expand=True)
+        self.status_label.pack(side="right", padx=10)
 
-        # Status bar
-        self.status_var = tk.StringVar(value="Sẵn sàng")
-        status = ttk.Label(tab, textvariable=self.status_var, relief="sunken", anchor="w")
-        status.pack(fill="x", padx=10, pady=(0, 5))
+    def _create_settings_panel(self):
+        """Tạo panel cài đặt chính (Proxy + Account)"""
+        settings_frame = ctk.CTkFrame(self, fg_color="transparent")
+        settings_frame.grid(row=1, column=0, padx=20, pady=5, sticky="ew")
+        settings_frame.grid_columnconfigure((0, 1), weight=1)
 
-    # ==================== TAB CẤU HÌNH PROXY ====================
+        # === CỘT TRÁI: Proxy Settings ===
+        proxy_card = ctk.CTkFrame(settings_frame, corner_radius=12)
+        proxy_card.grid(row=0, column=0, padx=(0, 8), pady=0, sticky="nsew")
 
-    def _build_proxy_tab(self):
-        tab = self.tab_proxy
+        ctk.CTkLabel(
+            proxy_card,
+            text="🌐  Cài đặt Proxy",
+            font=ctk.CTkFont(size=16, weight="bold"),
+            text_color=COLORS['google_blue']
+        ).pack(pady=(12, 8), padx=15, anchor="w")
 
-        # --- Thêm proxy thủ công ---
-        add_frame = ttk.LabelFrame(tab, text="Thêm Proxy", padding=10)
-        add_frame.pack(fill="x", padx=10, pady=5)
+        # Proxy inputs
+        proxy_input_frame = ctk.CTkFrame(proxy_card, fg_color="transparent")
+        proxy_input_frame.pack(padx=15, pady=2, fill="x")
 
-        row1 = ttk.Frame(add_frame)
-        row1.pack(fill="x", pady=3)
+        # Row 1: Host + Port
+        row1 = ctk.CTkFrame(proxy_input_frame, fg_color="transparent")
+        row1.pack(fill="x", pady=2)
+        row1.grid_columnconfigure(0, weight=3)
+        row1.grid_columnconfigure(1, weight=1)
 
-        ttk.Label(row1, text="Loại Proxy:").pack(side="left")
-        self.var_proxy_type = tk.StringVar(value="http")
-        proxy_type_combo = ttk.Combobox(
-            row1, textvariable=self.var_proxy_type,
-            values=["http", "socks5"], width=8, state="readonly"
+        self.proxy_host = ctk.CTkEntry(row1, placeholder_text="Host (vd: proxy.example.com)")
+        self.proxy_host.grid(row=0, column=0, padx=(0, 5), sticky="ew")
+
+        self.proxy_port = ctk.CTkEntry(row1, placeholder_text="Port", width=80)
+        self.proxy_port.grid(row=0, column=1, sticky="ew")
+
+        # Row 2: Username + Password
+        row2 = ctk.CTkFrame(proxy_input_frame, fg_color="transparent")
+        row2.pack(fill="x", pady=2)
+        row2.grid_columnconfigure((0, 1), weight=1)
+
+        self.proxy_user = ctk.CTkEntry(row2, placeholder_text="Username")
+        self.proxy_user.grid(row=0, column=0, padx=(0, 5), sticky="ew")
+
+        self.proxy_pass = ctk.CTkEntry(row2, placeholder_text="Password", show="•")
+        self.proxy_pass.grid(row=0, column=1, sticky="ew")
+
+        # Separator
+        ctk.CTkLabel(proxy_card, text="── hoặc tải từ file ──",
+                     font=ctk.CTkFont(size=11), text_color=COLORS['text_dim']
+                     ).pack(pady=(8, 4))
+
+        # Proxy file
+        file_frame = ctk.CTkFrame(proxy_card, fg_color="transparent")
+        file_frame.pack(padx=15, pady=(2, 12), fill="x")
+
+        self.proxy_file_entry = ctk.CTkEntry(file_frame, placeholder_text="Đường dẫn file proxy...")
+        self.proxy_file_entry.pack(side="left", fill="x", expand=True, padx=(0, 5))
+
+        ctk.CTkButton(
+            file_frame, text="📁 Chọn", width=70,
+            command=self._browse_proxy_file,
+            fg_color=COLORS['google_blue'],
+            hover_color="#3367D6"
+        ).pack(side="right")
+
+        # Proxy info label
+        self.proxy_info_label = ctk.CTkLabel(
+            proxy_card, text="", font=ctk.CTkFont(size=11),
+            text_color=COLORS['google_green']
         )
-        proxy_type_combo.pack(side="left", padx=5)
+        self.proxy_info_label.pack(pady=(0, 4))
 
-        ttk.Label(row1, text="   Proxy (IP:Port):").pack(side="left")
-        self.var_proxy_addr = tk.StringVar()
-        ttk.Entry(row1, textvariable=self.var_proxy_addr, width=25).pack(side="left", padx=5)
+        # Test proxy buttons
+        test_btn_frame = ctk.CTkFrame(proxy_card, fg_color="transparent")
+        test_btn_frame.pack(padx=15, pady=(0, 10), fill="x")
 
-        row2 = ttk.Frame(add_frame)
-        row2.pack(fill="x", pady=3)
-
-        ttk.Label(row2, text="Username:").pack(side="left")
-        self.var_proxy_user = tk.StringVar()
-        ttk.Entry(row2, textvariable=self.var_proxy_user, width=15).pack(side="left", padx=5)
-
-        ttk.Label(row2, text="   Password:").pack(side="left")
-        self.var_proxy_pass = tk.StringVar()
-        ttk.Entry(row2, textvariable=self.var_proxy_pass, width=15, show="*").pack(side="left", padx=5)
-
-        ttk.Button(row2, text="➕ Thêm", command=self._add_proxy).pack(side="left", padx=10)
-
-        # --- Danh sách proxy ---
-        list_frame = ttk.LabelFrame(tab, text="Danh Sách Proxy", padding=5)
-        list_frame.pack(fill="both", expand=True, padx=10, pady=5)
-
-        self.proxy_listbox = tk.Listbox(
-            list_frame, height=8, font=("Consolas", 10),
-            selectmode="extended",
+        self.test_proxy_btn = ctk.CTkButton(
+            test_btn_frame, text="🧪 Test Proxy", width=120,
+            font=ctk.CTkFont(size=12),
+            fg_color=COLORS['google_yellow'],
+            text_color="#000000",
+            hover_color="#e0a800",
+            height=30,
+            command=self._test_proxy
         )
-        self.proxy_listbox.pack(fill="both", expand=True, side="left")
+        self.test_proxy_btn.pack(side="left", padx=(0, 5))
 
-        scrollbar = ttk.Scrollbar(list_frame, orient="vertical", command=self.proxy_listbox.yview)
-        scrollbar.pack(side="right", fill="y")
-        self.proxy_listbox.config(yscrollcommand=scrollbar.set)
+        self.test_no_proxy_btn = ctk.CTkButton(
+            test_btn_frame, text="🔌 Test Không Proxy", width=140,
+            font=ctk.CTkFont(size=12),
+            fg_color="#6c7086",
+            hover_color="#585b70",
+            height=30,
+            command=self._test_no_proxy
+        )
+        self.test_no_proxy_btn.pack(side="left")
 
-        # Buttons dưới list
-        btn_frame = ttk.Frame(tab)
-        btn_frame.pack(fill="x", padx=10, pady=5)
+        # === CỘT PHẢI: Account Settings ===
+        account_card = ctk.CTkFrame(settings_frame, corner_radius=12)
+        account_card.grid(row=0, column=1, padx=(8, 0), pady=0, sticky="nsew")
 
-        ttk.Button(btn_frame, text="🔍 Kiểm Tra Proxy", command=self._check_proxies).pack(side="left", padx=3)
-        ttk.Button(btn_frame, text="📂 Tải từ file", command=self._load_proxies_file).pack(side="left", padx=3)
-        ttk.Button(btn_frame, text="🗑️ Xóa đã chọn", command=self._remove_selected_proxy).pack(side="left", padx=3)
-        ttk.Button(btn_frame, text="🧹 Xóa tất cả", command=self._clear_proxies).pack(side="left", padx=3)
+        ctk.CTkLabel(
+            account_card,
+            text="👤  Cài đặt Tài khoản",
+            font=ctk.CTkFont(size=16, weight="bold"),
+            text_color=COLORS['google_green']
+        ).pack(pady=(12, 8), padx=15, anchor="w")
 
-        # --- Thống kê ---
-        stats_frame = ttk.LabelFrame(tab, text="Thống Kê Proxy", padding=10)
-        stats_frame.pack(fill="x", padx=10, pady=5)
+        # Số lượng tài khoản
+        num_frame = ctk.CTkFrame(account_card, fg_color="transparent")
+        num_frame.pack(padx=15, pady=3, fill="x")
+        ctk.CTkLabel(num_frame, text="Số tài khoản cần tạo:",
+                     font=ctk.CTkFont(size=13)).pack(side="left")
+        self.num_accounts_entry = ctk.CTkEntry(num_frame, width=70, justify="center")
+        self.num_accounts_entry.pack(side="right")
+        self.num_accounts_entry.insert(0, "1")
 
-        self.proxy_stats_var = tk.StringVar(value="Tổng số proxy: 0  |  Hoạt động: 0  |  Đã sử dụng: 0/0")
-        ttk.Label(stats_frame, textvariable=self.proxy_stats_var, font=("Segoe UI", 10)).pack()
+        # Delay giữa các tài khoản
+        delay_frame = ctk.CTkFrame(account_card, fg_color="transparent")
+        delay_frame.pack(padx=15, pady=3, fill="x")
+        ctk.CTkLabel(delay_frame, text="Delay giữa mỗi tk (giây):",
+                     font=ctk.CTkFont(size=13)).pack(side="left")
+        self.delay_entry = ctk.CTkEntry(delay_frame, width=70, justify="center")
+        self.delay_entry.pack(side="right")
+        self.delay_entry.insert(0, "5")
 
-    # ==================== TAB KẾT QUẢ ====================
+        # Checkboxes
+        self.headless_var = ctk.BooleanVar(value=False)
+        ctk.CTkCheckBox(
+            account_card, text="Chế độ ẩn (Headless)",
+            variable=self.headless_var,
+            font=ctk.CTkFont(size=13),
+            checkbox_width=20, checkbox_height=20
+        ).pack(padx=15, pady=3, anchor="w")
 
-    def _build_results_tab(self):
-        tab = self.tab_results
+        self.auto_gen_var = ctk.BooleanVar(value=True)
+        ctk.CTkCheckBox(
+            account_card, text="Tự động tạo thông tin ngẫu nhiên",
+            variable=self.auto_gen_var,
+            font=ctk.CTkFont(size=13),
+            checkbox_width=20, checkbox_height=20
+        ).pack(padx=15, pady=3, anchor="w")
 
-        # Treeview hiển thị tài khoản đã tạo
-        columns = ("email", "password", "status")
-        self.results_tree = ttk.Treeview(tab, columns=columns, show="headings", height=15)
-        self.results_tree.heading("email", text="Email")
-        self.results_tree.heading("password", text="Mật khẩu")
-        self.results_tree.heading("status", text="Trạng thái")
-        self.results_tree.column("email", width=250)
-        self.results_tree.column("password", width=200)
-        self.results_tree.column("status", width=120)
-        self.results_tree.pack(fill="both", expand=True, padx=10, pady=10)
+        self.screenshot_var = ctk.BooleanVar(value=True)
+        ctk.CTkCheckBox(
+            account_card, text="Chụp screenshot mỗi bước (debug)",
+            variable=self.screenshot_var,
+            font=ctk.CTkFont(size=13),
+            checkbox_width=20, checkbox_height=20
+        ).pack(padx=15, pady=(3, 12), anchor="w")
 
-        # Buttons
-        btn_frame = ttk.Frame(tab)
-        btn_frame.pack(fill="x", padx=10, pady=5)
+    def _create_control_panel(self):
+        """Tạo panel điều khiển (nút Start/Stop/Export)"""
+        control_frame = ctk.CTkFrame(self, fg_color="transparent")
+        control_frame.grid(row=2, column=0, padx=20, pady=8, sticky="ew")
 
-        ttk.Button(btn_frame, text="📋 Copy tất cả", command=self._copy_results).pack(side="left", padx=3)
-        ttk.Button(btn_frame, text="💾 Xuất CSV", command=self._export_csv).pack(side="left", padx=3)
-        ttk.Button(btn_frame, text="🧹 Xóa kết quả", command=self._clear_results).pack(side="left", padx=3)
+        # Nút Start
+        self.start_btn = ctk.CTkButton(
+            control_frame,
+            text="▶  BẮT ĐẦU",
+            font=ctk.CTkFont(size=15, weight="bold"),
+            fg_color=COLORS['google_green'],
+            hover_color="#27ae60",
+            height=42,
+            width=180,
+            command=self._start_registration
+        )
+        self.start_btn.pack(side="left", padx=(0, 10))
 
-    # ==================== PROXY ACTIONS ====================
+        # Nút Stop
+        self.stop_btn = ctk.CTkButton(
+            control_frame,
+            text="⏹  DỪNG",
+            font=ctk.CTkFont(size=15, weight="bold"),
+            fg_color=COLORS['google_red'],
+            hover_color="#c0392b",
+            height=42,
+            width=140,
+            state="disabled",
+            command=self._stop_registration
+        )
+        self.stop_btn.pack(side="left", padx=(0, 10))
 
-    def _add_proxy(self):
-        addr = self.var_proxy_addr.get().strip()
-        if not addr:
-            messagebox.showwarning("Lỗi", "Vui lòng nhập địa chỉ proxy (IP:Port)")
-            return
+        # Nút Export
+        self.export_btn = ctk.CTkButton(
+            control_frame,
+            text="📤  Xuất kết quả",
+            font=ctk.CTkFont(size=13),
+            fg_color=COLORS['google_blue'],
+            hover_color="#3367D6",
+            height=42,
+            width=150,
+            command=self._export_results
+        )
+        self.export_btn.pack(side="left", padx=(0, 10))
 
-        ptype = self.var_proxy_type.get()
-        user = self.var_proxy_user.get().strip()
-        passwd = self.var_proxy_pass.get().strip()
+        # Nút Chạy Thử (Không Proxy) - mở browser
+        self.quick_test_btn = ctk.CTkButton(
+            control_frame,
+            text="🚀  Chạy Thử (Không Proxy)",
+            font=ctk.CTkFont(size=13, weight="bold"),
+            fg_color=COLORS['google_yellow'],
+            text_color="#000000",
+            hover_color="#e0a800",
+            height=42,
+            width=200,
+            command=self._quick_test_no_proxy
+        )
+        self.quick_test_btn.pack(side="left", padx=(0, 10))
 
-        if user and passwd:
-            proxy_str = f"{ptype}://{user}:{passwd}@{addr}"
-        else:
-            proxy_str = f"{ptype}://{addr}"
+        # Progress bar
+        self.progress_bar = ctk.CTkProgressBar(control_frame, height=8)
+        self.progress_bar.pack(side="right", fill="x", expand=True, padx=(15, 0))
+        self.progress_bar.set(0)
 
-        self.proxy_list.append(proxy_str)
-        self.proxy_listbox.insert("end", proxy_str)
-        self.var_proxy_addr.set("")
-        self.var_proxy_user.set("")
-        self.var_proxy_pass.set("")
-        self._update_proxy_stats()
+    def _create_log_panel(self):
+        """Tạo panel hiển thị log"""
+        log_frame = ctk.CTkFrame(self, corner_radius=12)
+        log_frame.grid(row=3, column=0, padx=20, pady=(5, 5), sticky="nsew")
 
-    def _load_proxies_file(self):
-        filepath = filedialog.askopenfilename(
+        ctk.CTkLabel(
+            log_frame,
+            text="📝  Log hoạt động",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            text_color=COLORS['google_yellow']
+        ).pack(pady=(8, 4), padx=12, anchor="w")
+
+        self.log_textbox = ctk.CTkTextbox(
+            log_frame,
+            font=ctk.CTkFont(family="Consolas", size=12),
+            corner_radius=8,
+            wrap="word"
+        )
+        self.log_textbox.pack(padx=10, pady=(0, 10), fill="both", expand=True)
+
+    def _create_results_panel(self):
+        """Tạo panel hiển thị kết quả"""
+        results_frame = ctk.CTkFrame(self, corner_radius=12)
+        results_frame.grid(row=4, column=0, padx=20, pady=(5, 15), sticky="nsew")
+
+        header_frame = ctk.CTkFrame(results_frame, fg_color="transparent")
+        header_frame.pack(padx=12, pady=(8, 4), fill="x")
+
+        ctk.CTkLabel(
+            header_frame,
+            text="✅  Kết quả đăng ký",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            text_color=COLORS['google_green']
+        ).pack(side="left")
+
+        self.result_count_label = ctk.CTkLabel(
+            header_frame,
+            text="0 tài khoản",
+            font=ctk.CTkFont(size=12),
+            text_color=COLORS['text_dim']
+        )
+        self.result_count_label.pack(side="right")
+
+        self.results_textbox = ctk.CTkTextbox(
+            results_frame,
+            font=ctk.CTkFont(family="Consolas", size=12),
+            corner_radius=8,
+            height=120,
+            wrap="none"
+        )
+        self.results_textbox.pack(padx=10, pady=(0, 10), fill="both", expand=True)
+
+        # Header cho bảng kết quả
+        header_text = f"{'STT':<5} {'Email':<35} {'Password':<20} {'Trạng thái':<20} {'Chi tiết'}"
+        self.results_textbox.insert("end", header_text + "\n")
+        self.results_textbox.insert("end", "─" * 110 + "\n")
+
+    # ============ XỬ LÝ SỰ KIỆN ============
+
+    def _browse_proxy_file(self):
+        """Chọn file proxy"""
+        file_path = filedialog.askopenfilename(
             title="Chọn file proxy",
             filetypes=[("Text files", "*.txt"), ("All files", "*.*")]
         )
-        if not filepath:
+        if file_path:
+            self.proxy_file_entry.delete(0, "end")
+            self.proxy_file_entry.insert(0, file_path)
+            proxies = load_proxies_from_file(file_path)
+            self.proxy_list = proxies
+            self.proxy_info_label.configure(
+                text=f"✅ Đã tải {len(proxies)} proxy từ file",
+                text_color=COLORS['google_green']
+            )
+
+    def _get_proxy_config(self, index=0):
+        """Lấy cấu hình proxy (single hoặc từ list)"""
+        # Ưu tiên proxy list từ file
+        if self.proxy_list:
+            proxy = self.proxy_list[index % len(self.proxy_list)]
+            return proxy
+
+        # Nếu không, dùng proxy nhập tay
+        host = self.proxy_host.get().strip()
+        port = self.proxy_port.get().strip()
+        if host and port:
+            proxy = {"server": f"http://{host}:{port}"}
+            user = self.proxy_user.get().strip()
+            passwd = self.proxy_pass.get().strip()
+            if user and passwd:
+                proxy["username"] = user
+                proxy["password"] = passwd
+            return proxy
+
+        return None
+
+    def _test_proxy(self):
+        """Test proxy hiện tại có hoạt động không"""
+        proxy = self._get_proxy_config()
+        if not proxy:
+            messagebox.showwarning("Cảnh báo", "Chưa cấu hình proxy! Hãy điền thông tin proxy trước.")
             return
 
-        with open(filepath, "r") as f:
-            lines = f.readlines()
+        self.test_proxy_btn.configure(state="disabled", text="⏳ Đang test...")
+        self._add_log("[SYSTEM] ═══ TEST PROXY ═══")
 
-        count = 0
-        for line in lines:
-            line = line.strip()
-            if line and not line.startswith("#"):
-                if not line.startswith("http://") and not line.startswith("socks"):
-                    line = f"http://{line}"
-                self.proxy_list.append(line)
-                self.proxy_listbox.insert("end", line)
-                count += 1
+        def _run():
+            bot = GoogleRegisterBot(
+                headless=True,
+                log_callback=self._add_log
+            )
+            try:
+                success, msg = bot.test_proxy(proxy_config=proxy)
+                if success:
+                    self.proxy_info_label.configure(
+                        text=f"✅ {msg}",
+                        text_color=COLORS['google_green']
+                    )
+                else:
+                    self.proxy_info_label.configure(
+                        text=f"❌ {msg}",
+                        text_color=COLORS['google_red']
+                    )
+            finally:
+                bot.close()
+                self.test_proxy_btn.configure(state="normal", text="🧪 Test Proxy")
 
-        self._update_proxy_stats()
-        messagebox.showinfo("Thành công", f"Đã tải {count} proxy từ file.")
+        threading.Thread(target=_run, daemon=True).start()
 
-    def _remove_selected_proxy(self):
-        selected = list(self.proxy_listbox.curselection())
-        for i in reversed(selected):
-            self.proxy_list.pop(i)
-            self.proxy_listbox.delete(i)
-        self._update_proxy_stats()
+    def _test_no_proxy(self):
+        """Test kết nối trực tiếp (không proxy) để xác nhận tool hoạt động"""
+        self.test_no_proxy_btn.configure(state="disabled", text="⏳ Đang test...")
+        self._add_log("[SYSTEM] ═══ TEST KẾT NỐI TRỰC TIẾP (KHÔNG PROXY) ═══")
 
-    def _clear_proxies(self):
-        self.proxy_list.clear()
-        self.proxy_listbox.delete(0, "end")
-        self.proxy_status.clear()
-        self._update_proxy_stats()
+        def _run():
+            bot = GoogleRegisterBot(
+                headless=True,
+                log_callback=self._add_log
+            )
+            try:
+                success, msg = bot.test_proxy(proxy_config=None)
+                if success:
+                    self._add_log(f"[SYSTEM] ✅ Kết nối trực tiếp OK! → Lỗi là do PROXY")
+                    self.proxy_info_label.configure(
+                        text="✅ Mạng OK - Lỗi do proxy",
+                        text_color=COLORS['google_yellow']
+                    )
+                else:
+                    self._add_log(f"[SYSTEM] ❌ Kết nối trực tiếp cũng lỗi → Lỗi mạng")
+            finally:
+                bot.close()
+                self.test_no_proxy_btn.configure(state="normal", text="🔌 Test Không Proxy")
 
-    def _check_proxies(self):
-        if not self.proxy_list:
-            messagebox.showwarning("Lỗi", "Chưa có proxy nào để kiểm tra!")
-            return
+        threading.Thread(target=_run, daemon=True).start()
 
-        self._log("🔍 Đang kiểm tra proxy...")
-        self.status_var.set("Đang kiểm tra proxy...")
+    def _add_log(self, message):
+        """Thêm message vào log queue (thread-safe)"""
+        self.log_queue.put(message)
 
-        def check_thread():
-            active = 0
-            for i, proxy in enumerate(self.proxy_list):
-                ok = ProxyChecker.check_single(proxy, timeout=8)
-                self.proxy_status[proxy] = "active" if ok else "dead"
+    def _poll_log_queue(self):
+        """Kiểm tra và hiển thị log từ queue"""
+        while not self.log_queue.empty():
+            try:
+                msg = self.log_queue.get_nowait()
+                self.log_textbox.insert("end", msg + "\n")
+                self.log_textbox.see("end")
+            except queue.Empty:
+                break
+        self.after(100, self._poll_log_queue)
 
-                status_icon = "✅" if ok else "❌"
-                self._log(f"  {status_icon} {proxy}")
+    def _add_result(self, result):
+        """Thêm kết quả vào bảng"""
+        self.results.append(result)
+        idx = len(self.results)
 
-                # Cập nhật màu trong listbox
-                self.proxy_listbox.itemconfig(i, fg="green" if ok else "red")
+        # Emoji trạng thái
+        status_emoji = {
+            'success': '✅',
+            'possibly_success': '🟡',
+            'username_taken': '🔄',
+            'needs_verification': '⚠️',
+            'error': '❌',
+            'cancelled': '⏹',
+            'unknown': '❓',
+        }
+        emoji = status_emoji.get(result.get('status', 'unknown'), '❓')
 
-                if ok:
-                    active += 1
+        line = f"{idx:<5} {result.get('email', 'N/A'):<35} {result.get('password', 'N/A'):<20} {emoji} {result.get('status', 'unknown'):<15} {result.get('detail', '')}"
+        self.results_textbox.insert("end", line + "\n")
+        self.results_textbox.see("end")
 
-            self._update_proxy_stats()
-            self._log(f"📊 Kết quả: {active}/{len(self.proxy_list)} proxy hoạt động.")
-            self.status_var.set(f"Kiểm tra xong: {active}/{len(self.proxy_list)} hoạt động")
+        self.result_count_label.configure(text=f"{idx} tài khoản")
 
-        threading.Thread(target=check_thread, daemon=True).start()
-
-    def _update_proxy_stats(self):
-        total = len(self.proxy_list)
-        active = sum(1 for p in self.proxy_list if self.proxy_status.get(p) == "active")
-        used = getattr(self, "_proxies_used", 0)
-        self.proxy_stats_var.set(f"Tổng số proxy: {total}  |  Hoạt động: {active}  |  Đã sử dụng: {used}/{total}")
-
-    def _get_next_proxy(self) -> dict:
-        """Lấy proxy tiếp theo (xoay vòng)."""
-        if not self.proxy_list:
-            return None
-
-        # Lọc proxy active
-        active_proxies = [p for p in self.proxy_list if self.proxy_status.get(p) != "dead"]
-        if not active_proxies:
-            active_proxies = self.proxy_list  # Nếu chưa check thì dùng tất cả
-
-        proxy_str = active_proxies[self.proxy_index % len(active_proxies)]
-        self.proxy_index += 1
-        self._proxies_used = self.proxy_index
-
-        return ProxyChecker.parse_proxy_line(proxy_str)
-
-    # ==================== CREATE ACTIONS ====================
-
-    def _start_create(self):
+    def _start_registration(self):
+        """Bắt đầu quá trình đăng ký"""
         if self.is_running:
             return
 
-        num = int(self.var_num_accounts.get() or "1")
-        timeout = int(self.var_timeout.get() or "300")
-
-        self.is_running = True
-        self.btn_start.config(state="disabled")
-        self.btn_stop.config(state="normal")
-        self.status_var.set("Đang tạo tài khoản...")
-        self.proxy_index = 0
-        self._proxies_used = 0
-
-        def worker():
-            try:
-                for i in range(num):
-                    if not self.is_running:
-                        self._log("⏹ Đã dừng bởi người dùng.")
-                        break
-
-                    # Lấy proxy nếu bật
-                    proxy_server = ""
-                    proxy_user = ""
-                    proxy_pass = ""
-
-                    if self.var_use_proxy.get() and self.proxy_list:
-                        proxy_config = self._get_next_proxy()
-                        if proxy_config:
-                            proxy_server = proxy_config.get("server", "")
-                            proxy_user = proxy_config.get("username", "")
-                            proxy_pass = proxy_config.get("password", "")
-                            self._log(f"🌐 Proxy: {proxy_server}")
-                        self._update_proxy_stats()
-
-                    config = Config(
-                        num_accounts=1,
-                        headless=False,
-                        wait_for_human_verification=self.var_wait_verify.get(),
-                        verification_timeout=timeout,
-                        proxy_server=proxy_server,
-                        proxy_username=proxy_user,
-                        proxy_password=proxy_pass,
-                    )
-
-                    self._log(f"\n{'='*50}")
-                    self._log(f"[{i+1}/{num}] Bắt đầu tạo tài khoản...")
-                    self.status_var.set(f"Đang tạo tài khoản {i+1}/{num}...")
-
-                    tool = AutoRegister(config)
-
-                    # Override logger để ghi vào GUI
-                    original_info = tool.logger.info
-                    original_warning = tool.logger.warning
-                    original_error = tool.logger.error
-
-                    def gui_info(msg, _orig=original_info):
-                        _orig(msg)
-                        self._log(f"  {msg}")
-
-                    def gui_warning(msg, _orig=original_warning):
-                        _orig(msg)
-                        self._log(f"⚠ {msg}")
-
-                    def gui_error(msg, _orig=original_error):
-                        _orig(msg)
-                        self._log(f"❌ {msg}")
-
-                    tool.logger.info = gui_info
-                    tool.logger.warning = gui_warning
-                    tool.logger.error = gui_error
-
-                    tool.run()
-
-                    # Thêm kết quả vào tab Kết Quả
-                    for acc in tool.results:
-                        self.results_tree.insert("", "end", values=(
-                            acc.email, acc.password,
-                            "✅ Thành công" if acc.status == "success" else "❌ Thất bại"
-                        ))
-
-                    # Delay giữa các tài khoản
-                    if i < num - 1 and self.is_running:
-                        delay = random.uniform(3, 7)
-                        self._log(f"\n⏳ Chờ {delay:.0f}s trước tài khoản tiếp...")
-                        time.sleep(delay)
-
-                        # Đổi IP nếu cần (nhắc nhở)
-                        if self.var_rotate_proxy.get() and not self.proxy_list:
-                            self._log("💡 Mẹo: Bật/tắt chế độ máy bay trên điện thoại để đổi IP!")
-
-            except Exception as e:
-                self._log(f"❌ Lỗi: {e}")
-            finally:
-                self.is_running = False
-                self.btn_start.config(state="normal")
-                self.btn_stop.config(state="disabled")
-                self.status_var.set("Hoàn tất!")
-                self._log("\n✅ Hoàn tất tất cả!")
-
-        self.worker_thread = threading.Thread(target=worker, daemon=True)
-        self.worker_thread.start()
-
-    def _stop_create(self):
-        self.is_running = False
-        self.status_var.set("Đang dừng...")
-
-    def _reset_profile(self):
-        import shutil
-        profile_dir = "browser_profile"
-        if os.path.exists(profile_dir):
-            shutil.rmtree(profile_dir)
-        screenshot_dir = "screenshots"
-        if os.path.exists(screenshot_dir):
-            shutil.rmtree(screenshot_dir)
-        warmup_marker = os.path.join(profile_dir, ".warmup_done")
-        self._log("🗑️ Đã reset browser profile!")
-        messagebox.showinfo("Reset", "Đã xóa browser profile cũ. Profile mới sẽ được tạo khi chạy.")
-
-    # ==================== RESULTS ACTIONS ====================
-
-    def _copy_results(self):
-        lines = []
-        for item in self.results_tree.get_children():
-            values = self.results_tree.item(item, "values")
-            lines.append(f"{values[0]} | {values[1]} | {values[2]}")
-        if lines:
-            self.clipboard_clear()
-            self.clipboard_append("\n".join(lines))
-            messagebox.showinfo("Copy", f"Đã copy {len(lines)} tài khoản!")
-        else:
-            messagebox.showinfo("Copy", "Chưa có kết quả nào.")
-
-    def _export_csv(self):
-        filepath = filedialog.asksaveasfilename(
-            defaultextension=".csv",
-            filetypes=[("CSV file", "*.csv")],
-            initialfile="accounts.csv"
-        )
-        if not filepath:
+        # Validate
+        try:
+            num_accounts = int(self.num_accounts_entry.get())
+            if num_accounts < 1:
+                raise ValueError
+        except ValueError:
+            messagebox.showerror("Lỗi", "Số tài khoản phải là số nguyên dương!")
             return
 
-        import csv
-        with open(filepath, "w", newline="", encoding="utf-8") as f:
-            writer = csv.writer(f)
-            writer.writerow(["Email", "Password", "Status"])
-            for item in self.results_tree.get_children():
-                writer.writerow(self.results_tree.item(item, "values"))
+        try:
+            delay = float(self.delay_entry.get())
+            if delay < 0:
+                raise ValueError
+        except ValueError:
+            messagebox.showerror("Lỗi", "Delay phải là số không âm!")
+            return
 
-        messagebox.showinfo("Xuất CSV", f"Đã lưu vào {filepath}")
+        # Kiểm tra proxy
+        proxy = self._get_proxy_config()
+        if not proxy and not self.proxy_list:
+            if not messagebox.askyesno(
+                "Không có proxy",
+                "Bạn chưa cấu hình proxy. Tiếp tục mà không có proxy?\n\n"
+                "⚠️ Google có thể chặn nếu không dùng proxy residential."
+            ):
+                return
 
-    def _clear_results(self):
-        for item in self.results_tree.get_children():
-            self.results_tree.delete(item)
+        # Cập nhật UI
+        self.is_running = True
+        self.start_btn.configure(state="disabled")
+        self.stop_btn.configure(state="normal")
+        self.status_label.configure(
+            text="🔄 Đang chạy...",
+            text_color=COLORS['google_green']
+        )
+        self.progress_bar.set(0)
 
-    # ==================== HELPERS ====================
+        self._add_log("[SYSTEM] ═══════════════════════════════════════")
+        self._add_log("[SYSTEM] 🚀 Bắt đầu đăng ký tài khoản Google")
+        self._add_log(f"[SYSTEM] Số lượng: {num_accounts} | Delay: {delay}s")
+        self._add_log(f"[SYSTEM] Headless: {self.headless_var.get()} | Auto-gen: {self.auto_gen_var.get()}")
+        if proxy:
+            self._add_log(f"[SYSTEM] Proxy: {proxy['server']}")
+        self._add_log("[SYSTEM] ═══════════════════════════════════════")
 
-    def _log(self, msg: str):
-        """Ghi log lên GUI (thread-safe)."""
-        def _append():
-            self.log_text.insert("end", msg + "\n")
-            self.log_text.see("end")
-        self.after(0, _append)
+        # Chạy bot trong thread riêng
+        self.bot_thread = threading.Thread(
+            target=self._run_bot_thread,
+            args=(num_accounts, delay),
+            daemon=True
+        )
+        self.bot_thread.start()
+
+    def _run_bot_thread(self, num_accounts, delay):
+        """Thread chạy bot (không chạy trên main thread)"""
+        screenshot_dir = os.path.join(RESULT_DIR, "screenshots") if self.screenshot_var.get() else None
+
+        self.bot = GoogleRegisterBot(
+            headless=self.headless_var.get(),
+            log_callback=self._add_log,
+            screenshot_dir=screenshot_dir
+        )
+
+        try:
+            self.bot.start_browser()
+
+            for i in range(num_accounts):
+                if not self.bot.is_running():
+                    self._add_log(f"[SYSTEM] ⏹ Đã dừng sau {i} tài khoản")
+                    break
+
+                self._add_log(f"\n[SYSTEM] ━━━ Tài khoản {i + 1}/{num_accounts} ━━━")
+
+                # Tạo thông tin tài khoản
+                if self.auto_gen_var.get():
+                    account_info = generate_account_info()
+                    self._add_log(f"[SYSTEM] Auto-gen: {account_info['first_name']} {account_info['last_name']} | {account_info['username']}")
+                else:
+                    account_info = generate_account_info()
+
+                # Lấy proxy cho tài khoản này
+                proxy = self._get_proxy_config(index=i)
+
+                # Đăng ký
+                result = self.bot.register_one(account_info, proxy_config=proxy)
+
+                if result:
+                    # Cập nhật kết quả trên UI (thread-safe via queue)
+                    self.log_queue.put(("__RESULT__", result))
+
+                    # Cập nhật progress
+                    progress = (i + 1) / num_accounts
+                    self.log_queue.put(("__PROGRESS__", progress))
+
+                # Delay giữa các tài khoản
+                if i < num_accounts - 1 and self.bot.is_running():
+                    self._add_log(f"[SYSTEM] ⏳ Chờ {delay}s trước tài khoản tiếp theo...")
+                    import time
+                    time.sleep(delay)
+
+        except Exception as e:
+            self._add_log(f"[SYSTEM] ❌ Lỗi nghiêm trọng: {str(e)}")
+        finally:
+            if self.bot:
+                self.bot.close()
+            self._add_log("[SYSTEM] ═══════════════════════════════════════")
+            self._add_log("[SYSTEM] ✅ Hoàn tất quá trình đăng ký")
+            self._add_log("[SYSTEM] ═══════════════════════════════════════")
+
+            # Auto-save kết quả
+            self._auto_save_results()
+
+            # Reset UI state (schedule on main thread)
+            self.log_queue.put(("__DONE__", None))
+
+    def _quick_test_no_proxy(self):
+        """Chạy thử 1 tài khoản không proxy, mở browser để xem"""
+        if self.is_running:
+            messagebox.showwarning("Cảnh báo", "Bot đang chạy! Hãy dừng trước.")
+            return
+
+        # Cập nhật UI
+        self.is_running = True
+        self.start_btn.configure(state="disabled")
+        self.stop_btn.configure(state="normal")
+        self.quick_test_btn.configure(state="disabled")
+        self.status_label.configure(
+            text="🚀 Đang chạy thử (không proxy)...",
+            text_color=COLORS['google_yellow']
+        )
+        self.progress_bar.set(0)
+
+        self._add_log("[SYSTEM] ═════════════════════════════════════════")
+        self._add_log("[SYSTEM] 🚀 CHẠY THỬ - KHÔNG PROXY - MỞ BROWSER")
+        self._add_log("[SYSTEM] ═════════════════════════════════════════")
+
+        def _run():
+            screenshot_dir = os.path.join(RESULT_DIR, "screenshots")
+            bot = GoogleRegisterBot(
+                headless=False,  # Mở browser để xem
+                log_callback=self._add_log,
+                screenshot_dir=screenshot_dir
+            )
+            self.bot = bot
+            try:
+                bot.start_browser()
+
+                # Tạo thông tin ngẫu nhiên
+                account_info = generate_account_info()
+                self._add_log(f"[SYSTEM] Auto-gen: {account_info['first_name']} {account_info['last_name']} | {account_info['username']}")
+                self._add_log(f"[SYSTEM] Password: {account_info['password']}")
+                self._add_log("[SYSTEM] Proxy: KHÔNG (kết nối trực tiếp)")
+                self._add_log("[SYSTEM] Browser: MỞ (headless=False)")
+
+                # Đăng ký không proxy
+                result = bot.register_one(account_info, proxy_config=None)
+
+                if result:
+                    self.log_queue.put(("__RESULT__", result))
+                    self.log_queue.put(("__PROGRESS__", 1.0))
+
+            except Exception as e:
+                self._add_log(f"[SYSTEM] ❌ Lỗi: {str(e)}")
+            finally:
+                if bot:
+                    bot.close()
+                self._add_log("[SYSTEM] ═══ Hoàn tất chạy thử ═══")
+                self._auto_save_results()
+                self.log_queue.put(("__DONE__", None))
+                # Reset nút
+                self.quick_test_btn.configure(state="normal")
+
+        threading.Thread(target=_run, daemon=True).start()
+
+    def _stop_registration(self):
+        """Dừng quá trình đăng ký"""
+        if self.bot:
+            self.bot.stop()
+        self.is_running = False
+        self.status_label.configure(
+            text="⏹ Đang dừng...",
+            text_color=COLORS['google_yellow']
+        )
+        self._add_log("[SYSTEM] ⏹ Đang dừng... vui lòng chờ bước hiện tại hoàn thành")
+
+    def _export_results(self):
+        """Xuất kết quả ra file CSV"""
+        if not self.results:
+            messagebox.showinfo("Thông báo", "Chưa có kết quả để xuất!")
+            return
+
+        file_path = filedialog.asksaveasfilename(
+            title="Xuất kết quả",
+            defaultextension=".csv",
+            initialfile=f"accounts_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+            filetypes=[("CSV files", "*.csv"), ("Text files", "*.txt"), ("All files", "*.*")]
+        )
+
+        if file_path:
+            try:
+                with open(file_path, 'w', newline='', encoding='utf-8-sig') as f:
+                    writer = csv.DictWriter(f, fieldnames=['email', 'password', 'first_name', 'last_name', 'status', 'detail'])
+                    writer.writeheader()
+                    writer.writerows(self.results)
+                messagebox.showinfo("Thành công", f"Đã xuất {len(self.results)} kết quả ra:\n{file_path}")
+                self._add_log(f"[SYSTEM] 📤 Đã xuất kết quả: {file_path}")
+            except Exception as e:
+                messagebox.showerror("Lỗi", f"Không thể xuất file: {e}")
+
+    def _auto_save_results(self):
+        """Tự động lưu kết quả sau khi hoàn tất"""
+        if not self.results:
+            return
+
+        try:
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+
+            # Lưu CSV
+            csv_path = os.path.join(RESULT_DIR, f"accounts_{timestamp}.csv")
+            with open(csv_path, 'w', newline='', encoding='utf-8-sig') as f:
+                writer = csv.DictWriter(f, fieldnames=['email', 'password', 'first_name', 'last_name', 'status', 'detail'])
+                writer.writeheader()
+                writer.writerows(self.results)
+
+            # Lưu TXT format đơn giản (email:password)
+            txt_path = os.path.join(RESULT_DIR, f"accounts_{timestamp}.txt")
+            with open(txt_path, 'w', encoding='utf-8') as f:
+                for r in self.results:
+                    if r.get('status') in ('success', 'possibly_success'):
+                        f.write(f"{r['email']}:{r['password']}\n")
+
+            self._add_log(f"[SYSTEM] 💾 Tự động lưu: {csv_path}")
+
+        except Exception as e:
+            self._add_log(f"[SYSTEM] ⚠️ Không thể auto-save: {e}")
+
+    def _poll_log_queue(self):
+        """Xử lý log queue - chạy trên main thread"""
+        while not self.log_queue.empty():
+            try:
+                item = self.log_queue.get_nowait()
+
+                # Xử lý các message đặc biệt
+                if isinstance(item, tuple):
+                    msg_type, data = item
+
+                    if msg_type == "__RESULT__":
+                        self._add_result(data)
+                        continue
+
+                    elif msg_type == "__PROGRESS__":
+                        self.progress_bar.set(data)
+                        continue
+
+                    elif msg_type == "__DONE__":
+                        self._on_bot_done()
+                        continue
+
+                # Message log bình thường
+                self.log_textbox.insert("end", str(item) + "\n")
+                self.log_textbox.see("end")
+
+            except queue.Empty:
+                break
+
+        self.after(100, self._poll_log_queue)
+
+    def _on_bot_done(self):
+        """Xử lý khi bot hoàn tất"""
+        self.is_running = False
+        self.start_btn.configure(state="normal")
+        self.stop_btn.configure(state="disabled")
+
+        # Đếm thành công
+        success_count = sum(1 for r in self.results if r.get('status') in ('success', 'possibly_success'))
+        total = len(self.results)
+
+        self.status_label.configure(
+            text=f"✅ Hoàn tất ({success_count}/{total} thành công)",
+            text_color=COLORS['google_green'] if success_count > 0 else COLORS['google_red']
+        )
+
+    def _on_close(self):
+        """Xử lý đóng ứng dụng"""
+        if self.is_running:
+            if messagebox.askyesno("Xác nhận", "Bot đang chạy. Bạn có muốn dừng và thoát?"):
+                self._stop_registration()
+                self.after(1000, self.destroy)
+            return
+        self.destroy()
 
 
-# ============================================================
-# ▶️  ENTRY POINT
-# ============================================================
+# ============ CHẠY ỨNG DỤNG ============
 if __name__ == "__main__":
-    app = ToolRegGmail()
+    app = GoogleAccountCreatorApp()
     app.mainloop()
