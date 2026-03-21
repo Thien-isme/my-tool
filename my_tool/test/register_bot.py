@@ -300,32 +300,57 @@ class GoogleRegisterBot:
             self.log(f"⚠️ Trang không đúng kỳ vọng. URL: {current_url}")
             return {**result_base, 'status': 'error', 'detail': f'Unexpected page after name. URL: {current_url}'}
 
-        # Chọn tháng (Google có thể dùng <select> hoặc custom <div> dropdown)
-        month_value = info['birth_month']
+        # Chọn tháng (Google dùng <select> hoặc custom <div> dropdown)
+        month_value = int(info['birth_month']) # 1-12
         try:
             month_el = page.locator('#month')
-            # Kiểm tra xem có phải là <select> không
             is_select = page.evaluate("el => el.tagName === 'SELECT'", month_el.element_handle())
             
             if is_select:
                 page.select_option('#month', value=str(month_value))
+                self.log(f"✅ Đã chọn tháng bằng <select>: {month_value}")
             else:
-                # Nếu là custom div, click để mở menu sau đó chọn
+                # Cách 1: Click mở rồi click option theo data-value
                 month_el.click()
                 self.random_sleep(0.5, 1)
-                # Google dùng aria-owns hoặc các option bên trong
-                # Cách an toàn nhất là click vào option có data-value tương ứng hoặc text
-                # Tháng 1=1, 2=2...
-                page.locator(f'div[role="option"][data-value="{month_value}"]').hide_before_unpack = True # just a note
-                page.click(f'div[role="option"][data-value="{month_value}"]')
+                
+                # Danh sách selector tiềm năng cho các option trong dropdown
+                option_selectors = [
+                    f'div[role="option"][data-value="{month_value}"]',
+                    f'//div[@role="option"][@data-value="{month_value}"]',
+                    f'//div[@role="option"][{month_value}]', # Theo thứ tự
+                ]
+                
+                option_clicked = False
+                for sel in option_selectors:
+                    try:
+                        if page.locator(sel).first.is_visible(timeout=2000):
+                            page.click(sel)
+                            option_clicked = True
+                            self.log(f"✅ Đã chọn tháng bằng click div: {month_value}")
+                            break
+                    except: continue
+
+                # Cách 2 (Phòng hờ): Dùng phím mũi tên
+                if not option_clicked:
+                    self.log("⚠️ Không click được div, dùng phím mũi tên...")
+                    # Bấm Escape để reset nếu menu đang mở nhưng không tìm thấy div
+                    page.keyboard.press("Escape")
+                    self.random_sleep(0.3, 0.5)
+                    month_el.click()
+                    self.random_sleep(0.5, 1)
+                    # Reset về đầu danh sách (Home) rồi xuống N lần
+                    page.keyboard.press("Home")
+                    for _ in range(month_value - 1):
+                        page.keyboard.press("ArrowDown")
+                        self.random_sleep(0.1, 0.2)
+                    page.keyboard.press("Enter")
+                    self.log(f"✅ Đã chọn tháng bằng keyboard: {month_value}")
             
-            self.log(f"✅ Đã chọn tháng: {month_value}")
         except Exception as e:
-            self.log(f"⚠️ Lỗi chọn tháng: {e}. Thử click thủ công...")
-            try:
-                page.click('#month')
-                self.random_sleep(0.5, 1)
-                page.click(f'//div[@role="option"]//span[contains(text(), "")]') # fallback
+            self.log(f"❌ Lỗi chọn tháng: {e}")
+            # Thử gõ bừa vào nếu là input (hiếm gặp)
+            try: page.type('#month', str(month_value))
             except: pass
 
         self.random_sleep(0.3, 0.6)
@@ -337,20 +362,28 @@ class GoogleRegisterBot:
         self.human_type(page, '#year', info['birth_year'])
 
         # Chọn giới tính
+        gender_val = int(info['gender']) # 1=Female, 2=Male...
         self.random_sleep(0.3, 0.6)
         try:
             gender_el = page.locator('#gender')
             is_select_gender = page.evaluate("el => el.tagName === 'SELECT'", gender_el.element_handle())
+            
             if is_select_gender:
-                page.select_option('#gender', value=str(info['gender']))
+                page.select_option('#gender', value=str(gender_val))
             else:
+                # Dùng chiêu mũi tên cho Giới tính
                 gender_el.click()
-                self.random_sleep(0.5, 1)
-                page.click(f'div[role="option"][data-value="{info["gender"]}"]')
-        except Exception:
-            # Fallback nếu không chọn được bằng code trên
-            try:
-                page.select_option('#gender', value=str(info['gender']))
+                self.random_sleep(0.8, 1.2)
+                # Về Home rồi xuống N lần
+                page.keyboard.press("Home")
+                for _ in range(gender_val - 1):
+                    page.keyboard.press("ArrowDown")
+                    self.random_sleep(0.1, 0.2)
+                page.keyboard.press("Enter")
+                self.log(f"✅ Đã chọn giới tính bằng keyboard: {gender_val}")
+        except Exception as e:
+            self.log(f"❌ Lỗi chọn giới tính: {e}")
+            try: page.select_option('#gender', value=str(gender_val))
             except: pass
 
         self.take_screenshot(page, "03_birthday_filled")
